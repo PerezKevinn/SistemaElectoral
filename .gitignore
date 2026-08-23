@@ -1,0 +1,30 @@
+# Dependencias
+node_modules/
+server/node_modules/
+
+# Entornos y credenciales
+.env
+.env.local
+.env.*.local
+server/.env
+server/.env.local
+
+# Builds y artefactos de compilación
+dist/
+dist-ssr/
+server/dist/
+*.local
+
+# Logs y depuración
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+server/npm-debug.log*
+
+# Archivos de sistema y editores
+.DS_Store
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj

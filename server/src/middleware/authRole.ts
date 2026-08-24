@@ -1,12 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
+export interface UsuarioPayload {
+    id?: string;
+    id_personal?: string;
+    rol: 'ADMIN' | 'AUDITOR';
+    correo?: string;
+    nombre?: string;
+    nombres?: string;
+    apellidos?: string;
+    cargo?: string;
+    documento?: string;
+    [key: string]: any;
+}
+
 export interface AuthRequest extends Request {
-    user?: {
-        id: string;
-        rol: 'ADMIN' | 'AUDITOR';
-        correo: string;
-    };
+    usuario?: UsuarioPayload;
+    user?: UsuarioPayload;
 }
 
 export const verificarRol = (rolesPermitidos: ('ADMIN' | 'AUDITOR')[]) => {
@@ -19,13 +29,14 @@ export const verificarRol = (rolesPermitidos: ('ADMIN' | 'AUDITOR')[]) => {
             }
 
             const token = authHeader.split(' ')[1];
-            const decoded = jwt.verify(token, process.env.JWT_CHALLENGE_SECRET!) as any;
+            const decoded = jwt.verify(token, process.env.JWT_CHALLENGE_SECRET!) as UsuarioPayload;
 
             if (!rolesPermitidos.includes(decoded.rol)) {
                 res.status(403).json({ success: false, error: 'Acceso no autorizado para este rol' });
                 return;
             }
 
+            req.usuario = decoded;
             req.user = decoded;
             next();
         } catch (error) {
@@ -33,3 +44,5 @@ export const verificarRol = (rolesPermitidos: ('ADMIN' | 'AUDITOR')[]) => {
         }
     };
 };
+
+export const requireRol = verificarRol;

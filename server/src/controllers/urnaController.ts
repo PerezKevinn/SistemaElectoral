@@ -111,10 +111,10 @@ export const verificarComprobante = async (req: Request, res: Response): Promise
             return;
         }
 
-        // Consultar en la tabla votos de la base de datos de la urna
+        // Consulta sin la columna inexistente creado_at
         const { data: voto, error } = await urnaDb
             .from('votos')
-            .select('id_voto, id_eleccion, voto_hash, secuencia_conteo, creado_at')
+            .select('id_voto, id_eleccion, voto_hash, secuencia_conteo')
             .eq('voto_hash', hash)
             .maybeSingle();
 
@@ -135,7 +135,7 @@ export const verificarComprobante = async (req: Request, res: Response): Promise
             mensaje: 'Papeleta verificada con éxito',
             comprobante: voto.voto_hash,
             secuencia: voto.secuencia_conteo,
-            fecha: voto.creado_at || new Date().toISOString(),
+            fecha: new Date().toISOString(),
         });
     } catch (err: any) {
         console.error('Error al verificar comprobante:', err);

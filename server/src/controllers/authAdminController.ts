@@ -6,7 +6,7 @@ import { censoDb } from '../config/supabase';
 export const loginAdmin = async (req: Request, res: Response): Promise<void> => {
     try {
         const documento = (req.body.documentoIdentidad || req.body.documento || req.body.cedula || '').toString().trim();
-        const password = req.body.password || req.body.contrasena || '';
+        const password = (req.body.clave || req.body.password || req.body.contrasena || '').toString().trim();
         const rolSolicitado = (req.body.rol || 'ADMIN').toString().trim().toUpperCase();
 
         if (!documento || !password) {

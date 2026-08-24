@@ -67,3 +67,6 @@ export const loginAdmin = async (req: Request, res: Response): Promise<void> => 
         res.status(500).json({ success: false, error: err.message });
     }
 };
+
+// Exportar alias para las rutas que importen loginFuncionario
+export const loginFuncionario = loginAdmin;

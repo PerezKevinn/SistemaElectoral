@@ -111,11 +111,16 @@ export const crearStaff = async (req: AuthRequest, res: Response): Promise<void>
     }
 };
 
-// 4. Alternar Estado Activo/Inactivo
+// Alternar Estado
 export const alternarEstadoStaff = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const { id } = req.params;
-        const { esta_activo } = req.body;
+        const id = req.body.idUsuario || req.body.id;
+        const esta_activo = req.body.activo !== undefined ? req.body.activo : req.body.esta_activo;
+
+        if (!id) {
+            res.status(400).json({ success: false, error: 'ID de usuario requerido' });
+            return;
+        }
 
         const { data, error } = await censoDb
             .from('personal_electoral')
@@ -131,14 +136,14 @@ export const alternarEstadoStaff = async (req: AuthRequest, res: Response): Prom
     }
 };
 
-// 5. Cambiar Contraseña
+// Cambiar Contraseña
 export const cambiarPasswordStaff = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const { id } = req.params;
-        const { password } = req.body;
+        const id = req.body.idUsuario || req.body.id;
+        const password = req.body.nuevaPassword || req.body.password;
 
-        if (!password) {
-            res.status(400).json({ success: false, error: 'Nueva contraseña requerida' });
+        if (!id || !password) {
+            res.status(400).json({ success: false, error: 'ID y nueva contraseña requeridos' });
             return;
         }
 

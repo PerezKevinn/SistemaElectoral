@@ -104,10 +104,10 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
 
     const alternarEstado = async (id: string, estadoActual: boolean) => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/urna/staff/${id}/estado`, {
-                method: 'PATCH',
+            const res = await fetch(`${API_BASE_URL}/api/urna/staff/estado`, {
+                method: 'POST',
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ esta_activo: !estadoActual }),
+                body: JSON.stringify({ idUsuario: id, activo: !estadoActual }),
             });
             const data = await res.json();
             if (!res.ok || !data.success) throw new Error(data.error || 'Error al modificar estado');
@@ -122,17 +122,22 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
         if (!modalPasswordId || !nuevaPassword) return;
 
         try {
-            const res = await fetch(`${API_BASE_URL}/api/urna/staff/${modalPasswordId}/password`, {
-                method: 'PATCH',
+            const res = await fetch(`${API_BASE_URL}/api/urna/staff/password`, {
+                method: 'POST',
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ password: nuevaPassword.trim() }),
+                body: JSON.stringify({
+                    idUsuario: modalPasswordId,
+                    nuevaPassword: nuevaPassword.trim()
+                }),
             });
+
             const data = await res.json();
             if (!res.ok || !data.success) throw new Error(data.error || 'Error al cambiar contraseña');
 
             alert('Contraseña actualizada con éxito');
             setModalPasswordId(null);
             setNuevaPassword('');
+            cargarStaff();
         } catch (err: any) {
             alert(err.message);
         }

@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Users, UserPlus, KeyRound, CheckCircle2, XCircle, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
 
+const API_BASE_URL = 'https://sistema-elecciones-api.onrender.com';
+
 interface StaffUser {
-    id_usuario: string;
-    documento: string;
-    nombre_completo: string;
+    id: string;
+    documento_identidad: string;
+    nombres: string;
+    apellidos: string;
     cargo: string;
-    correo: string;
     rol: 'ADMIN' | 'AUDITOR';
-    activo: boolean;
-    creado_at: string;
+    esta_activo: boolean;
+    created_at: string;
 }
 
 interface PanelCredencialesProps {
@@ -26,9 +28,9 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
     // Formulario nuevo usuario
     const [form, setForm] = useState({
         documento: '',
-        nombreCompleto: '',
+        nombres: '',
+        apellidos: '',
         cargo: '',
-        correo: '',
         rol: 'AUDITOR' as 'ADMIN' | 'AUDITOR',
         password: '',
     });
@@ -36,22 +38,30 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [exitoMsg, setExitoMsg] = useState<string | null>(null);
 
-    const token = sessionStorage.getItem('staff_token');
-    const authHeaders = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+    const getAuthHeaders = () => {
+        const token = localStorage.getItem('auth_token') || sessionStorage.getItem('staff_token');
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        };
     };
 
     const cargarStaff = async () => {
         setLoading(true);
+        setErrorMsg(null);
         try {
-            const res = await fetch('/api/urna/staff', { headers: authHeaders });
+            const res = await fetch(`${API_BASE_URL}/api/urna/staff`, {
+                headers: getAuthHeaders()
+            });
             const data = await res.json();
             if (data.success) {
-                setPersonal(data.staff);
+                setPersonal(data.data || data.staff || []);
+            } else {
+                throw new Error(data.error || 'Error al obtener personal');
             }
         } catch (err: any) {
             console.error(err);
+            setErrorMsg(err.message);
         } finally {
             setLoading(false);
         }
@@ -67,16 +77,24 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
         setExitoMsg(null);
 
         try {
-            const res = await fetch('/api/urna/staff/crear', {
+            const res = await fetch(`${API_BASE_URL}/api/urna/staff/crear`, {
                 method: 'POST',
-                headers: authHeaders,
-                body: JSON.stringify(form),
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    documento_identidad: form.documento.trim(),
+                    nombres: form.nombres.trim(),
+                    apellidos: form.apellidos.trim(),
+                    cargo: form.cargo.trim(),
+                    rol: form.rol,
+                    password: form.password.trim(),
+                }),
             });
+
             const data = await res.json();
-            if (!res.ok || !data.success) throw new Error(data.error || 'Error al crear');
+            if (!res.ok || !data.success) throw new Error(data.error || 'Error al crear funcionario');
 
             setExitoMsg('Funcionario registrado exitosamente.');
-            setForm({ documento: '', nombreCompleto: '', cargo: '', correo: '', rol: 'AUDITOR', password: '' });
+            setForm({ documento: '', nombres: '', apellidos: '', cargo: '', rol: 'AUDITOR', password: '' });
             setMostrarModalCrear(false);
             cargarStaff();
         } catch (err: any) {
@@ -84,15 +102,15 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
         }
     };
 
-    const alternarEstado = async (idUsuario: string, estadoActual: boolean) => {
+    const alternarEstado = async (id: string, estadoActual: boolean) => {
         try {
-            const res = await fetch('/api/urna/staff/estado', {
-                method: 'POST',
-                headers: authHeaders,
-                body: JSON.stringify({ idUsuario, activo: !estadoActual }),
+            const res = await fetch(`${API_BASE_URL}/api/urna/staff/${id}/estado`, {
+                method: 'PATCH',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ esta_activo: !estadoActual }),
             });
             const data = await res.json();
-            if (!res.ok || !data.success) throw new Error(data.error);
+            if (!res.ok || !data.success) throw new Error(data.error || 'Error al modificar estado');
             cargarStaff();
         } catch (err: any) {
             alert(err.message);
@@ -104,13 +122,13 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
         if (!modalPasswordId || !nuevaPassword) return;
 
         try {
-            const res = await fetch('/api/urna/staff/password', {
-                method: 'POST',
-                headers: authHeaders,
-                body: JSON.stringify({ idUsuario: modalPasswordId, nuevaPassword }),
+            const res = await fetch(`${API_BASE_URL}/api/urna/staff/${modalPasswordId}/password`, {
+                method: 'PATCH',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ password: nuevaPassword.trim() }),
             });
             const data = await res.json();
-            if (!res.ok || !data.success) throw new Error(data.error);
+            if (!res.ok || !data.success) throw new Error(data.error || 'Error al cambiar contraseña');
 
             alert('Contraseña actualizada con éxito');
             setModalPasswordId(null);
@@ -137,20 +155,20 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
                 <div className="flex items-center space-x-2">
                     <button
                         onClick={() => setMostrarModalCrear(true)}
-                        className="flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition"
+                        className="flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition cursor-pointer"
                     >
                         <UserPlus className="w-3.5 h-3.5" />
                         <span>Nuevo Funcionario</span>
                     </button>
                     <button
                         onClick={cargarStaff}
-                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition"
+                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition cursor-pointer"
                     >
                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     </button>
                     <button
                         onClick={onVolver}
-                        className="flex items-center space-x-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition"
+                        className="flex items-center space-x-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition cursor-pointer"
                     >
                         <ArrowLeft className="w-3.5 h-3.5" />
                         <span>Volver</span>
@@ -162,6 +180,13 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
                 <div className="p-3 bg-emerald-950/40 border border-emerald-800 rounded-lg text-emerald-300 text-xs flex items-center space-x-2">
                     <CheckCircle2 className="w-4 h-4" />
                     <span>{exitoMsg}</span>
+                </div>
+            )}
+
+            {errorMsg && (
+                <div className="p-3 bg-rose-950/40 border border-rose-800 rounded-lg text-rose-300 text-xs flex items-center space-x-2">
+                    <AlertCircle className="w-4 h-4" />
+                    <span>{errorMsg}</span>
                 </div>
             )}
 
@@ -183,41 +208,48 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
                             <tr>
                                 <td colSpan={6} className="text-center py-6 text-slate-500">Cargando funcionarios...</td>
                             </tr>
+                        ) : personal.length === 0 ? (
+                            <tr>
+                                <td colSpan={6} className="text-center py-6 text-slate-500">No hay personal registrado en el sistema.</td>
+                            </tr>
                         ) : personal.map((usr) => (
-                            <tr key={usr.id_usuario} className="hover:bg-slate-800/30 transition">
+                            <tr key={usr.id} className="hover:bg-slate-800/30 transition">
                                 <td className="py-3 px-4 font-medium text-white">
-                                    {usr.nombre_completo}
-                                    <span className="block text-[10px] text-slate-500 font-mono">{usr.correo}</span>
+                                    {usr.nombres} {usr.apellidos}
                                 </td>
-                                <td className="py-3 px-4 font-mono">{usr.documento}</td>
+                                <td className="py-3 px-4 font-mono">{usr.documento_identidad}</td>
                                 <td className="py-3 px-4 text-slate-400">{usr.cargo}</td>
                                 <td className="py-3 px-4">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${usr.rol === 'ADMIN' ? 'bg-rose-950/80 text-rose-300 border border-rose-800/60' : 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/60'
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${usr.rol === 'ADMIN'
+                                        ? 'bg-rose-950/80 text-rose-300 border border-rose-800/60'
+                                        : 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/60'
                                         }`}>
                                         {usr.rol}
                                     </span>
                                 </td>
                                 <td className="py-3 px-4 text-center">
-                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] ${usr.activo ? 'bg-emerald-950 text-emerald-300' : 'bg-slate-800 text-slate-500'
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] ${usr.esta_activo ? 'bg-emerald-950 text-emerald-300' : 'bg-slate-800 text-slate-500'
                                         }`}>
-                                        {usr.activo ? 'Activo' : 'Inactivo'}
+                                        {usr.esta_activo ? 'Activo' : 'Inactivo'}
                                     </span>
                                 </td>
                                 <td className="py-3 px-4 text-right space-x-2">
                                     <button
-                                        onClick={() => setModalPasswordId(usr.id_usuario)}
-                                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded transition"
+                                        onClick={() => setModalPasswordId(usr.id)}
+                                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded transition cursor-pointer"
                                         title="Cambiar Contraseña"
                                     >
                                         <KeyRound className="w-3.5 h-3.5" />
                                     </button>
                                     <button
-                                        onClick={() => alternarEstado(usr.id_usuario, usr.activo)}
-                                        className={`p-1.5 rounded transition ${usr.activo ? 'bg-rose-950/60 text-rose-300 hover:bg-rose-900/60' : 'bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/60'
+                                        onClick={() => alternarEstado(usr.id, usr.esta_activo)}
+                                        className={`p-1.5 rounded transition cursor-pointer ${usr.esta_activo
+                                            ? 'bg-rose-950/60 text-rose-300 hover:bg-rose-900/60'
+                                            : 'bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/60'
                                             }`}
-                                        title={usr.activo ? 'Desactivar Usuario' : 'Activar Usuario'}
+                                        title={usr.esta_activo ? 'Desactivar Usuario' : 'Activar Usuario'}
                                     >
-                                        {usr.activo ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                                        {usr.esta_activo ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                                     </button>
                                 </td>
                             </tr>
@@ -233,15 +265,27 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
                         <h3 className="text-base font-bold text-white">Registrar Nuevo Funcionario</h3>
 
                         <form onSubmit={handleCrearUsuario} className="space-y-3 text-xs">
-                            <div>
-                                <label className="block text-slate-400 mb-1">Nombre Completo</label>
-                                <input
-                                    type="text"
-                                    value={form.nombreCompleto}
-                                    onChange={(e) => setForm({ ...form, nombreCompleto: e.target.value })}
-                                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white"
-                                    required
-                                />
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block text-slate-400 mb-1">Nombres</label>
+                                    <input
+                                        type="text"
+                                        value={form.nombres}
+                                        onChange={(e) => setForm({ ...form, nombres: e.target.value })}
+                                        className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-slate-400 mb-1">Apellidos</label>
+                                    <input
+                                        type="text"
+                                        value={form.apellidos}
+                                        onChange={(e) => setForm({ ...form, apellidos: e.target.value })}
+                                        className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white"
+                                        required
+                                    />
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-2">
@@ -281,17 +325,6 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
                             </div>
 
                             <div>
-                                <label className="block text-slate-400 mb-1">Correo Electrónico</label>
-                                <input
-                                    type="email"
-                                    value={form.correo}
-                                    onChange={(e) => setForm({ ...form, correo: e.target.value })}
-                                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white"
-                                    required
-                                />
-                            </div>
-
-                            <div>
                                 <label className="block text-slate-400 mb-1">Contraseña Inicial</label>
                                 <input
                                     type="password"
@@ -303,24 +336,17 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
                                 />
                             </div>
 
-                            {errorMsg && (
-                                <div className="p-2.5 bg-rose-950/60 border border-rose-800 text-rose-300 rounded-lg flex items-center space-x-2">
-                                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                                    <span>{errorMsg}</span>
-                                </div>
-                            )}
-
                             <div className="flex justify-end space-x-2 pt-2">
                                 <button
                                     type="button"
                                     onClick={() => setMostrarModalCrear(false)}
-                                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg"
+                                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg cursor-pointer"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg"
+                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg cursor-pointer"
                                 >
                                     Guardar Funcionario
                                 </button>
@@ -351,13 +377,13 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
                                 <button
                                     type="button"
                                     onClick={() => { setModalPasswordId(null); setNuevaPassword(''); }}
-                                    className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-lg"
+                                    className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-lg cursor-pointer"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-semibold"
+                                    className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-semibold cursor-pointer"
                                 >
                                     Actualizar
                                 </button>

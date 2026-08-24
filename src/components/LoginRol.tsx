@@ -32,7 +32,7 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
 
         setLoading(true);
         try {
-            const res = await fetch('/api/urna/login-staff', {
+            const res = await fetch('https://sistema-elecciones-api.onrender.com/api/urna/login-staff', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -51,7 +51,6 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
                 throw new Error(`Este usuario pertenece al rol ${data.usuario.rol}, no a ${rolSeleccionado}.`);
             }
 
-            // Persistencia en almacenamiento para todos los módulos
             localStorage.setItem('auth_token', data.token);
             localStorage.setItem('staff_token', data.token);
             sessionStorage.setItem('staff_token', data.token);

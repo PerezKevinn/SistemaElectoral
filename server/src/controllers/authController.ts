@@ -9,7 +9,6 @@ import { censoDb, urnaDb } from '../config/supabase';
 // Instancia y configuración de compatibilidad de otplib
 const authenticator = otplib.authenticator || otplib;
 
-// Desactivar el chequeo estricto de longitud de secreto para pruebas
 if (authenticator.options) {
     authenticator.options = {
         ...authenticator.options,
@@ -30,64 +29,63 @@ export const loginPaso1 = async (req: Request, res: Response): Promise<void> => 
 
         const docLimpio = String(documentoIdentidad).trim();
 
-        // 1. Buscar votante en el censo (incluyendo mfa_secret)
+        // 1. Buscar votante en el censo
         const { data: votante, error } = await censoDb
             .from('votantes')
-            .select('id_votante, password_hash, mfa_secret, esta_habilitado, ha_solicitado_token')
+            .select('id_votante, documento_identidad, correo_institucional, password_hash, mfa_secret, esta_habilitado, ha_solicitado_token')
             .eq('documento_identidad', docLimpio)
             .maybeSingle();
 
-        console.log('Respuesta base de datos Censo:', { votante, error });
-
         if (error || !votante) {
-            console.log('-> Motivo de fallo: Votante no encontrado en Supabase o error de conexión');
             res.status(401).json({ success: false, error: 'Credenciales inválidas' });
             return;
         }
 
-        // 2. Validar habilitación y si ya solicitó su token
+        // 2. Validar habilitación
         if (!votante.esta_habilitado) {
-            console.log('-> Motivo de fallo: Votante inhabilitado');
             res.status(403).json({ success: false, error: 'El votante no está habilitado en el censo actual' });
             return;
         }
 
         if (votante.ha_solicitado_token) {
-            console.log('-> Motivo de fallo: Papeleta ya emitida previamente');
             res.status(403).json({ success: false, error: 'Ya has emitido tu papeleta electoral previamente' });
             return;
         }
 
         // 3. Validar contraseña con bcrypt
         const passwordValida = await bcrypt.compare(password, votante.password_hash);
-        console.log('¿Hash de contraseña verificado con éxito?:', passwordValida);
-
         if (!passwordValida) {
-            console.log('-> Motivo de fallo: Contraseña no coincide con el hash');
             res.status(401).json({ success: false, error: 'Credenciales inválidas' });
             return;
         }
 
-        // 4. Generar token temporal de desafío para el Paso 2 (MFA)
+        // 4. Asegurar que exista un mfa_secret
+        let secretMFA = votante.mfa_secret;
+        if (!secretMFA) {
+            secretMFA = authenticator.generateSecret();
+            await censoDb
+                .from('votantes')
+                .update({ mfa_secret: secretMFA, is_mfa_enabled: true })
+                .eq('id_votante', votante.id_votante);
+        }
+
+        // 5. Generar token temporal de desafío (JWT)
         const challengeToken = jwt.sign(
             { votanteId: votante.id_votante },
-            process.env.JWT_CHALLENGE_SECRET!,
+            process.env.JWT_CHALLENGE_SECRET || 'secret_fallback',
             { expiresIn: '5m' }
         );
 
-        // 5. Generar código QR dinámico en Base64 para escaneo rápido en apps 2FA
-        let qrCodeUrl: string | null = null;
-        if (votante.mfa_secret) {
-            const otpAuthUri = `otpauth://totp/EleccionesSindicales:${docLimpio}?secret=${votante.mfa_secret}&issuer=EleccionesSindicales`;
-            qrCodeUrl = await QRCode.toDataURL(otpAuthUri);
-        }
+        // 6. Generar código QR en Base64
+        const accountLabel = votante.correo_institucional || docLimpio;
+        const otpAuthUri = `otpauth://totp/EleccionesSindicales:${accountLabel}?secret=${secretMFA}&issuer=EleccionesSindicales`;
+        const qrCodeUrl = await QRCode.toDataURL(otpAuthUri);
 
-        console.log('-> Paso 1 exitoso. Challenge token y QR generados.');
         res.json({
             success: true,
             challengeToken,
             qrCode: qrCodeUrl,
-            manualKey: votante.mfa_secret,
+            manualKey: secretMFA,
         });
     } catch (error: any) {
         console.error('Error interno en loginPaso1:', error);
@@ -105,10 +103,10 @@ export const loginPaso2Mfa = async (req: Request, res: Response): Promise<void> 
             return;
         }
 
-        // 1. Verificar firma y vigencia del challengeToken
+        // 1. Verificar challengeToken
         let decoded: any;
         try {
-            decoded = jwt.verify(challengeToken, process.env.JWT_CHALLENGE_SECRET!);
+            decoded = jwt.verify(challengeToken, process.env.JWT_CHALLENGE_SECRET || 'secret_fallback');
         } catch {
             res.status(401).json({ success: false, error: 'La sesión de autenticación ha expirado' });
             return;
@@ -116,7 +114,7 @@ export const loginPaso2Mfa = async (req: Request, res: Response): Promise<void> 
 
         const { votanteId } = decoded;
 
-        // 2. Obtener datos del votante
+        // 2. Obtener datos actualizados del votante
         const { data: votante, error: errorVotante } = await censoDb
             .from('votantes')
             .select('id_votante, mfa_secret, ha_solicitado_token, esta_habilitado')
@@ -128,32 +126,24 @@ export const loginPaso2Mfa = async (req: Request, res: Response): Promise<void> 
             return;
         }
 
-        // 3. Validar código TOTP sin riesgo de crash
-        let isValidMfa = false;
+        // 3. Validar código TOTP
         const codigoLimpio = String(codigoMfa).trim();
+        let isValidMfa = false;
 
         if (votante.mfa_secret) {
             try {
-                // Compatible con todas las versiones de otplib
-                if (typeof otplib.authenticator?.verify === 'function') {
-                    isValidMfa = otplib.authenticator.verify({
+                if (typeof authenticator.verify === 'function') {
+                    isValidMfa = authenticator.verify({
                         token: codigoLimpio,
                         secret: votante.mfa_secret,
                     });
-                } else if (typeof otplib.authenticator?.check === 'function') {
-                    isValidMfa = otplib.authenticator.check(codigoLimpio, votante.mfa_secret);
-                } else if (typeof otplib.verify === 'function') {
-                    isValidMfa = otplib.verify({
-                        token: codigoLimpio,
-                        secret: votante.mfa_secret,
-                    });
+                } else if (typeof authenticator.check === 'function') {
+                    isValidMfa = authenticator.check(codigoLimpio, votante.mfa_secret);
                 }
             } catch (errOtp) {
-                console.error('Error durante la validación TOTP:', errOtp);
+                console.error('Error durante validación TOTP:', errOtp);
                 isValidMfa = false;
             }
-        } else {
-            isValidMfa = codigoLimpio === '123456';
         }
 
         if (!isValidMfa) {
@@ -174,11 +164,10 @@ export const loginPaso2Mfa = async (req: Request, res: Response): Promise<void> 
             return;
         }
 
-        // 5. GENERAR TOKEN CIEGO DE VOTO
+        // 5. Generar y registrar token ciego en la URNA
         const tokenPlano = crypto.randomBytes(32).toString('hex');
         const tokenHash = crypto.createHash('sha256').update(tokenPlano).digest('hex');
 
-        // 6. Registrar el token hash en la base de la URNA
         const { error: errorTokenUrna } = await urnaDb
             .from('tokens_votacion')
             .insert({
@@ -191,7 +180,7 @@ export const loginPaso2Mfa = async (req: Request, res: Response): Promise<void> 
             throw new Error('Error al registrar el token ciego en la urna');
         }
 
-        // 7. Marcar votante como "ha_solicitado_token = true" en el CENSO
+        // 6. Marcar solicitud en el CENSO
         const { error: errorUpdateCenso } = await censoDb
             .from('votantes')
             .update({
@@ -204,8 +193,6 @@ export const loginPaso2Mfa = async (req: Request, res: Response): Promise<void> 
             throw new Error('Error al actualizar el estado en el censo');
         }
 
-        // 8. Entregar token en plano e ID de elección
-        console.log('-> Token ciego emitido y registrado en la urna con éxito.');
         res.json({
             success: true,
             tokenVotacion: tokenPlano,
@@ -226,12 +213,10 @@ export const verificarVotante = async (req: Request, res: Response): Promise<voi
             return;
         }
 
-        const docLimpio = documento.trim();
-
         const { data: votante, error } = await censoDb
             .from('votantes')
             .select('id_votante, documento_identidad, nombres, apellidos, esta_habilitado, ha_solicitado_token')
-            .eq('documento_identidad', docLimpio)
+            .eq('documento_identidad', documento.trim())
             .single();
 
         if (error || !votante) {
@@ -269,10 +254,7 @@ export const obtenerSetupMfa = async (req: Request, res: Response): Promise<void
             return;
         }
 
-        // Formato estándar: otpauth://totp/Emisor:Cuenta?secret=SECRETO&issuer=Emisor
         const otpAuthUri = `otpauth://totp/EleccionesSindicales:${votante.correo_institucional}?secret=${votante.mfa_secret}&issuer=EleccionesSindicales`;
-
-        // Generar Data URL en formato base64 para renderizar en <img src="..." />
         const qrDataUrl = await QRCode.toDataURL(otpAuthUri);
 
         res.json({

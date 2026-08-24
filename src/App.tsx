@@ -33,6 +33,10 @@ export function App() {
   const [comprobante, setComprobante] = useState<string | null>(null);
 
   const handleCerrarSesion = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('staff_token');
+    sessionStorage.removeItem('staff_token');
+    sessionStorage.removeItem('staff_user');
     setRolAutenticado(null);
     setTokenVotacion(null);
     setComprobante(null);
@@ -120,42 +124,54 @@ export function App() {
               <div className="flex space-x-1">
                 <button
                   onClick={() => setVistaAdmin('APERTURA')}
-                  className={`px-2.5 py-1 text-xs rounded border ${vistaAdmin === 'APERTURA' ? 'bg-indigo-950 text-indigo-300 border-indigo-700' : 'bg-slate-900 text-slate-400 border-slate-800'
+                  className={`px-2.5 py-1 text-xs rounded border ${vistaAdmin === 'APERTURA'
+                    ? 'bg-indigo-950 text-indigo-300 border-indigo-700'
+                    : 'bg-slate-900 text-slate-400 border-slate-800'
                     }`}
                 >
                   Apertura
                 </button>
                 <button
                   onClick={() => setVistaAdmin('ESCRUTINIO')}
-                  className={`px-2.5 py-1 text-xs rounded border ${vistaAdmin === 'ESCRUTINIO' ? 'bg-indigo-950 text-indigo-300 border-indigo-700' : 'bg-slate-900 text-slate-400 border-slate-800'
+                  className={`px-2.5 py-1 text-xs rounded border ${vistaAdmin === 'ESCRUTINIO'
+                    ? 'bg-indigo-950 text-indigo-300 border-indigo-700'
+                    : 'bg-slate-900 text-slate-400 border-slate-800'
                     }`}
                 >
                   Escrutinio
                 </button>
                 <button
                   onClick={() => setVistaAdmin('CIERRE')}
-                  className={`px-2.5 py-1 text-xs rounded border ${vistaAdmin === 'CIERRE' ? 'bg-indigo-950 text-indigo-300 border-indigo-700' : 'bg-slate-900 text-slate-400 border-slate-800'
+                  className={`px-2.5 py-1 text-xs rounded border ${vistaAdmin === 'CIERRE'
+                    ? 'bg-indigo-950 text-indigo-300 border-indigo-700'
+                    : 'bg-slate-900 text-slate-400 border-slate-800'
                     }`}
                 >
                   Cierre
                 </button>
                 <button
                   onClick={() => setVistaAdmin('ACTA')}
-                  className={`px-2.5 py-1 text-xs rounded border ${vistaAdmin === 'ACTA' ? 'bg-indigo-950 text-indigo-300 border-indigo-700' : 'bg-slate-900 text-slate-400 border-slate-800'
+                  className={`px-2.5 py-1 text-xs rounded border ${vistaAdmin === 'ACTA'
+                    ? 'bg-indigo-950 text-indigo-300 border-indigo-700'
+                    : 'bg-slate-900 text-slate-400 border-slate-800'
                     }`}
                 >
                   Acta
                 </button>
                 <button
                   onClick={() => setVistaAdmin('LOGS')}
-                  className={`px-2.5 py-1 text-xs rounded border ${vistaAdmin === 'LOGS' ? 'bg-indigo-950 text-indigo-300 border-indigo-700' : 'bg-slate-900 text-slate-400 border-slate-800'
+                  className={`px-2.5 py-1 text-xs rounded border ${vistaAdmin === 'LOGS'
+                    ? 'bg-indigo-950 text-indigo-300 border-indigo-700'
+                    : 'bg-slate-900 text-slate-400 border-slate-800'
                     }`}
                 >
                   Bitácora
                 </button>
                 <button
                   onClick={() => setVistaAdmin('CREDENCIALES')}
-                  className={`px-2.5 py-1 text-xs rounded border ${vistaAdmin === 'CREDENCIALES' ? 'bg-indigo-950 text-indigo-300 border-indigo-700' : 'bg-slate-900 text-slate-400 border-slate-800'
+                  className={`px-2.5 py-1 text-xs rounded border ${vistaAdmin === 'CREDENCIALES'
+                    ? 'bg-indigo-950 text-indigo-300 border-indigo-700'
+                    : 'bg-slate-900 text-slate-400 border-slate-800'
                     }`}
                 >
                   Personal / Staff
@@ -167,28 +183,36 @@ export function App() {
               <div className="flex space-x-1">
                 <button
                   onClick={() => setVistaAuditor('VERIFICADOR')}
-                  className={`px-2.5 py-1 text-xs rounded border ${vistaAuditor === 'VERIFICADOR' ? 'bg-cyan-950 text-cyan-300 border-cyan-700' : 'bg-slate-900 text-slate-400 border-slate-800'
+                  className={`px-2.5 py-1 text-xs rounded border ${vistaAuditor === 'VERIFICADOR'
+                    ? 'bg-cyan-950 text-cyan-300 border-cyan-700'
+                    : 'bg-slate-900 text-slate-400 border-slate-800'
                     }`}
                 >
                   Verificador SHA-256
                 </button>
                 <button
                   onClick={() => setVistaAuditor('ESCRUTINIO')}
-                  className={`px-2.5 py-1 text-xs rounded border ${vistaAuditor === 'ESCRUTINIO' ? 'bg-cyan-950 text-cyan-300 border-cyan-700' : 'bg-slate-900 text-slate-400 border-slate-800'
+                  className={`px-2.5 py-1 text-xs rounded border ${vistaAuditor === 'ESCRUTINIO'
+                    ? 'bg-cyan-950 text-cyan-300 border-cyan-700'
+                    : 'bg-slate-900 text-slate-400 border-slate-800'
                     }`}
                 >
                   Escrutinio
                 </button>
                 <button
                   onClick={() => setVistaAuditor('ACTA')}
-                  className={`px-2.5 py-1 text-xs rounded border ${vistaAuditor === 'ACTA' ? 'bg-cyan-950 text-cyan-300 border-cyan-700' : 'bg-slate-900 text-slate-400 border-slate-800'
+                  className={`px-2.5 py-1 text-xs rounded border ${vistaAuditor === 'ACTA'
+                    ? 'bg-cyan-950 text-cyan-300 border-cyan-700'
+                    : 'bg-slate-900 text-slate-400 border-slate-800'
                     }`}
                 >
                   Acta
                 </button>
                 <button
                   onClick={() => setVistaAuditor('LOGS')}
-                  className={`px-2.5 py-1 text-xs rounded border ${vistaAuditor === 'LOGS' ? 'bg-cyan-950 text-cyan-300 border-cyan-700' : 'bg-slate-900 text-slate-400 border-slate-800'
+                  className={`px-2.5 py-1 text-xs rounded border ${vistaAuditor === 'LOGS'
+                    ? 'bg-cyan-950 text-cyan-300 border-cyan-700'
+                    : 'bg-slate-900 text-slate-400 border-slate-800'
                     }`}
                 >
                   Bitácora
@@ -208,7 +232,13 @@ export function App() {
       </header>
 
       <main className="my-auto py-6 print:py-0">
-        {!rolAutenticado && <LoginRol onAccesoConcedido={(rol) => setRolAutenticado(rol)} />}
+        {!rolAutenticado && (
+          <LoginRol
+            onAccesoConcedido={(rol) => {
+              setRolAutenticado(rol);
+            }}
+          />
+        )}
 
         {/* MÓDULO VOTANTE */}
         {rolAutenticado === 'VOTANTE' && (
@@ -258,7 +288,10 @@ export function App() {
           <>
             {vistaAdmin === 'APERTURA' && (
               <PanelAdminApertura
-                onEleccionIniciada={(id) => { setEleccionId(id); setVistaAdmin('ESCRUTINIO'); }}
+                onEleccionIniciada={(id) => {
+                  setEleccionId(id);
+                  setVistaAdmin('ESCRUTINIO');
+                }}
                 onVolver={() => setVistaAdmin('ESCRUTINIO')}
               />
             )}

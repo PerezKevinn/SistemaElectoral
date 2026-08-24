@@ -35,7 +35,11 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
             const res = await fetch('/api/urna/login-staff', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ documento, clave }),
+                body: JSON.stringify({
+                    documento: documento.trim(),
+                    clave: clave.trim(),
+                    rol: rolSeleccionado
+                }),
             });
 
             const data = await res.json();
@@ -47,8 +51,12 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
                 throw new Error(`Este usuario pertenece al rol ${data.usuario.rol}, no a ${rolSeleccionado}.`);
             }
 
+            // Persistencia en almacenamiento para todos los módulos
+            localStorage.setItem('auth_token', data.token);
+            localStorage.setItem('staff_token', data.token);
             sessionStorage.setItem('staff_token', data.token);
             sessionStorage.setItem('staff_user', JSON.stringify(data.usuario));
+
             onAccesoConcedido(data.usuario.rol, data.usuario, data.token);
         } catch (err: any) {
             setError(err.message);
@@ -112,7 +120,7 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
                                     type="text"
                                     value={documento}
                                     onChange={(e) => setDocumento(e.target.value)}
-                                    placeholder={rolSeleccionado === 'ADMIN' ? '1098700001' : '1098700002'}
+                                    placeholder={rolSeleccionado === 'ADMIN' ? '12345678' : '1098700002'}
                                     className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white font-mono outline-none focus:border-cyan-500"
                                     required
                                 />

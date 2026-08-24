@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { censoDb } from '../config/supabase';
 import { AuthRequest } from '../middleware/authRole';
 
-// 1. Inicio de Sesión de Funcionarios
+// 1. Login de Funcionarios
 export const loginStaff = async (req: Request, res: Response): Promise<void> => {
     try {
         const documento = (req.body.documento || req.body.documentoIdentidad || req.body.cedula || '').toString().trim();
@@ -61,7 +61,7 @@ export const loginStaff = async (req: Request, res: Response): Promise<void> => 
     }
 };
 
-// 2. Listar Funcionarios / Personal
+// 2. Listar Funcionarios
 export const listarStaff = async (_req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { data, error } = await censoDb
@@ -76,7 +76,7 @@ export const listarStaff = async (_req: AuthRequest, res: Response): Promise<voi
     }
 };
 
-// 3. Crear Nuevo Funcionario
+// 3. Crear Funcionario
 export const crearStaff = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { documento_identidad, nombres, apellidos, cargo, rol, password } = req.body;
@@ -111,7 +111,7 @@ export const crearStaff = async (req: AuthRequest, res: Response): Promise<void>
     }
 };
 
-// 4. Alternar Estado (Activar/Desactivar)
+// 4. Alternar Estado Activo/Inactivo
 export const alternarEstadoStaff = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
@@ -131,7 +131,7 @@ export const alternarEstadoStaff = async (req: AuthRequest, res: Response): Prom
     }
 };
 
-// 5. Cambiar Contraseña de Funcionario
+// 5. Cambiar Contraseña
 export const cambiarPasswordStaff = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;

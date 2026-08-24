@@ -104,58 +104,42 @@ export const obtenerResultados = async (req: Request, res: Response): Promise<vo
 
 export const verificarComprobante = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { comprobanteHash, eleccionId } = req.body;
+        const hash = (req.body.comprobanteHash || req.body.hash || '').toString().trim();
 
-        if (!comprobanteHash || typeof comprobanteHash !== 'string' || comprobanteHash.trim().length !== 64) {
-            res.status(400).json({
-                success: false,
-                error: 'El comprobante debe ser un hash SHA-256 válido de 64 caracteres hexadecimales.',
-            });
+        if (!hash) {
+            res.status(400).json({ success: false, error: 'Hash del comprobante requerido' });
             return;
         }
 
-        let query = urnaDb
+        // Consultar en la tabla votos de la base de datos de la urna
+        const { data: voto, error } = await urnaDb
             .from('votos')
-            .select('id_voto, id_eleccion, voto_hash, prev_hash, secuencia_conteo')
-            .eq('voto_hash', comprobanteHash.trim().toLowerCase());
-
-        if (eleccionId) {
-            query = query.eq('id_eleccion', eleccionId);
-        }
-
-        const { data: voto, error } = await query.maybeSingle();
+            .select('id_voto, id_eleccion, voto_hash, secuencia_conteo, creado_at')
+            .eq('voto_hash', hash)
+            .maybeSingle();
 
         if (error) {
-            console.error('Error al consultar voto:', error);
             throw error;
         }
 
         if (!voto) {
             res.status(404).json({
                 success: false,
-                valido: false,
-                error: 'El comprobante ingresado no existe en la urna digital de esta elección.',
+                error: 'El comprobante ingresado no existe en la urna digital de esta elección.'
             });
             return;
         }
 
-        // Retornamos metadatos de auditoría SIN revelar id_candidato
         res.json({
             success: true,
-            valido: true,
-            datosAuditoria: {
-                comprobanteHash: voto.voto_hash,
-                eleccionId: voto.id_eleccion,
-                secuencia: voto.secuencia_conteo,
-                prevHash: voto.prev_hash,
-                estado: 'SELLADO_EN_URNA',
-            },
+            mensaje: 'Papeleta verificada con éxito',
+            comprobante: voto.voto_hash,
+            secuencia: voto.secuencia_conteo,
+            fecha: voto.creado_at || new Date().toISOString(),
         });
-    } catch (error: any) {
-        res.status(500).json({
-            success: false,
-            error: error.message || 'Error al verificar el comprobante en la urna.',
-        });
+    } catch (err: any) {
+        console.error('Error al verificar comprobante:', err);
+        res.status(500).json({ success: false, error: err.message || 'Error interno al consultar la urna' });
     }
 };
 

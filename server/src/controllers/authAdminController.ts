@@ -1,65 +1,69 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { urnaDb } from '../config/supabase';
+import { censoDb } from '../config/supabase';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key_change_in_prod';
-
-export const loginFuncionario = async (req: Request, res: Response): Promise<void> => {
+export const loginAdmin = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { documento, clave } = req.body;
+        const documento = (req.body.documentoIdentidad || req.body.documento || req.body.cedula || '').toString().trim();
+        const password = req.body.password || req.body.contrasena || '';
+        const rolSolicitado = (req.body.rol || 'ADMIN').toString().trim().toUpperCase();
 
-        if (!documento || !clave) {
-            res.status(400).json({ success: false, error: 'Documento y contraseña requeridos.' });
+        if (!documento || !password) {
+            res.status(400).json({ success: false, error: 'Documento y contraseña requeridos' });
             return;
         }
 
-        // Consultar usuario en la base de datos
-        const { data: usuario, error } = await urnaDb
-            .from('usuarios_staff')
-            .select('id_usuario, documento, nombre_completo, cargo, rol, password_hash, activo')
-            .eq('documento', documento.trim())
-            .single();
+        // Consulta en la base de datos del censo
+        const { data: funcionario, error } = await censoDb
+            .from('personal_electoral')
+            .select('*')
+            .eq('documento_identidad', documento)
+            .eq('esta_activo', true)
+            .maybeSingle();
 
-        if (error || !usuario || !usuario.activo) {
+        if (error || !funcionario) {
             res.status(401).json({ success: false, error: 'Funcionario no encontrado o inactivo.' });
             return;
         }
 
-        // Validar contraseña con pgcrypto crypt
-        const { data: esValido, error: errRpc } = await urnaDb.rpc('validar_password_staff', {
-            p_password_ingresada: clave,
-            p_hash_almacenado: usuario.password_hash,
-        });
-
-        if (errRpc || !esValido) {
-            res.status(401).json({ success: false, error: 'Contraseña incorrecta.' });
+        if (funcionario.rol !== rolSolicitado) {
+            res.status(403).json({ success: false, error: `El usuario no posee el rol ${rolSolicitado}` });
             return;
         }
 
-        // Generar JWT con la identidad completa
+        // Validación de contraseña con bcrypt
+        const passwordValida = await bcrypt.compare(password, funcionario.password_hash);
+        if (!passwordValida) {
+            res.status(401).json({ success: false, error: 'Credenciales inválidas.' });
+            return;
+        }
+
+        // Generación del token JWT
         const token = jwt.sign(
             {
-                id: usuario.id_usuario,
-                documento: usuario.documento,
-                nombre: usuario.nombre_completo,
-                cargo: usuario.cargo,
-                rol: usuario.rol,
+                id: funcionario.id,
+                documento: funcionario.documento_identidad,
+                nombre: `${funcionario.nombres} ${funcionario.apellidos}`,
+                cargo: funcionario.cargo,
+                rol: funcionario.rol,
             },
-            JWT_SECRET,
-            { expiresIn: '4h' }
+            process.env.JWT_CHALLENGE_SECRET || 'secret_fallback',
+            { expiresIn: '8h' }
         );
 
         res.json({
             success: true,
             token,
             usuario: {
-                documento: usuario.documento,
-                nombre: usuario.nombre_completo,
-                cargo: usuario.cargo,
-                rol: usuario.rol,
+                id: funcionario.id,
+                documento: funcionario.documento_identidad,
+                nombre: `${funcionario.nombres} ${funcionario.apellidos}`,
+                cargo: funcionario.cargo,
+                rol: funcionario.rol,
             },
         });
-    } catch (error: any) {
-        res.status(500).json({ success: false, error: 'Error en la autenticación de funcionarios.' });
+    } catch (err: any) {
+        res.status(500).json({ success: false, error: err.message });
     }
 };

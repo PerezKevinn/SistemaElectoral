@@ -1,12 +1,8 @@
 {
     "rewrites": [
         {
-            "source": "/api/(.*)",
-            "destination": "https://sistema-elecciones-api.onrender.com/api/$1"
-        },
-        {
-            "source": "/(.*)",
-            "destination": "/index.html"
+            "source": "/api/:path*",
+            "destination": "https://sistema-elecciones-api.onrender.com/api/:path*"
         }
     ]
 }

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { loginPaso1, loginPaso2Mfa } from '../controllers/authController';
 import { censoDb } from '../config/supabase';
@@ -10,8 +10,8 @@ router.post('/login-paso1', loginPaso1);
 router.post('/login-paso2', loginPaso2Mfa);
 router.post('/login-paso2-mfa', loginPaso2Mfa);
 
-// Endpoint de prueba/seed
-router.post('/seed-votante', async (req, res): Promise<void> => {
+// Endpoint de prueba / seed
+router.post('/seed-votante', async (req: Request, res: Response): Promise<void> => {
     try {
         const { documentoIdentidad, password, nombres, apellidos, correo } = req.body;
 

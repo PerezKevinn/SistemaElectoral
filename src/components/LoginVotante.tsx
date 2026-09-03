@@ -229,7 +229,7 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
 
                 <div className="mt-8 text-center border-t border-slate-800/80 pt-4">
                     <p className="text-[11px] text-slate-400">
-                        Conexión cifrada TLS 1.3 | Tu identidad queda sellada tras la entrega de la papeleta.
+                        Canal de votación seguro | Tu identidad permanece disociada y protegida tras la entrega de la papeleta.
                     </p>
                 </div>
             </div>

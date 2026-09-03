@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Search, ArrowLeft, CheckCircle2, XCircle } from 'lucide-react';
 
-const API_BASE_URL = window.location.hostname === 'localhost' ? '' : 'https://sistema-elecciones-api.onrender.com';
-
 interface VerificadorProps {
     eleccionId?: string;
     onVolver: () => void;
@@ -23,7 +21,7 @@ export const VerificadorComprobante: React.FC<VerificadorProps> = ({ eleccionId,
         setResultado(null);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/api/urna/verificar`, {
+            const res = await fetch('/api/urna/verificar', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

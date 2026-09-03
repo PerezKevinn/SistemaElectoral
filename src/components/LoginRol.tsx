@@ -32,7 +32,7 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
 
         setLoading(true);
         try {
-            const res = await fetch('https://sistema-elecciones-api.onrender.com/api/urna/login-staff', {
+            const res = await fetch('/api/urna/login-staff', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -42,7 +42,13 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
                 }),
             });
 
-            const data = await res.json();
+            let data: any = {};
+            try {
+                data = await res.json();
+            } catch {
+                throw new Error('Error al conectar con el servidor backend.');
+            }
+
             if (!res.ok || !data.success) {
                 throw new Error(data.error || 'Credenciales inválidas.');
             }

@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Users, UserPlus, KeyRound, CheckCircle2, XCircle, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
 import { useToast } from './Toast';
 
-const API_BASE_URL = window.location.hostname === 'localhost' ? '' : 'https://sistema-elecciones-api.onrender.com';
-
 interface StaffUser {
     id: string;
     documento_identidad: string;
@@ -52,7 +50,7 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
         setLoading(true);
         setErrorMsg(null);
         try {
-            const res = await fetch(`${API_BASE_URL}/api/urna/staff`, {
+            const res = await fetch('/api/urna/staff', {
                 headers: getAuthHeaders()
             });
 
@@ -93,7 +91,7 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
         setExitoMsg(null);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/api/urna/staff/crear`, {
+            const res = await fetch('/api/urna/staff/crear', {
                 method: 'POST',
                 headers: getAuthHeaders(),
                 body: JSON.stringify({
@@ -128,7 +126,7 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
 
     const alternarEstado = async (id: string, estadoActual: boolean) => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/urna/staff/estado`, {
+            const res = await fetch('/api/urna/staff/estado', {
                 method: 'POST',
                 headers: getAuthHeaders(),
                 body: JSON.stringify({ idUsuario: id, activo: !estadoActual }),
@@ -152,7 +150,7 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
         if (!modalPasswordId || !nuevaPassword) return;
 
         try {
-            const res = await fetch(`${API_BASE_URL}/api/urna/staff/password`, {
+            const res = await fetch('/api/urna/staff/password', {
                 method: 'POST',
                 headers: getAuthHeaders(),
                 body: JSON.stringify({

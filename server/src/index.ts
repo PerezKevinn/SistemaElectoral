@@ -21,7 +21,7 @@ app.use(
                 styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
                 fontSrc: ["'self'", 'https://fonts.gstatic.com'],
                 imgSrc: ["'self'", 'data:', 'https:'],
-                connectSrc: ["'self'", 'https://*.supabase.co', 'http://localhost:5173', 'http://localhost:4000'],
+                connectSrc: ["'self'", 'https://*.supabase.co', 'http://localhost:*', 'http://127.0.0.1:*', 'https://*.vercel.app', 'https://*.onrender.com'],
             },
         },
         crossOriginEmbedderPolicy: false,
@@ -42,16 +42,21 @@ const origenesPermitidos = [
 app.use(
     cors({
         origin: (origin, callback) => {
-            // Permitir peticiones sin origen (como Postman, apps móviles o llamadas internas del mismo servidor)
+            // Permitir peticiones sin origen (como Postman, mobile o server-to-server)
             if (!origin) return callback(null, true);
-            if (origenesPermitidos.includes(origin) || process.env.NODE_ENV !== 'production') {
+
+            const esVercel = /^https:\/\/[a-zA-Z0-9\-_.]+\.vercel\.app$/.test(origin);
+            const esLocalhost = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+            const esPermitido = origenesPermitidos.some(o => o && origin.startsWith(o));
+
+            if (esLocalhost || esVercel || esPermitido || process.env.NODE_ENV !== 'production') {
                 return callback(null, true);
             }
-            return callback(new Error('Bloqueado por política CORS'));
+            return callback(new Error(`Bloqueado por política CORS: ${origin}`));
         },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
     })
 );
 

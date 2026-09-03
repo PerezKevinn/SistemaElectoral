@@ -351,3 +351,95 @@ export const obtenerLogsAuditoria = async (req: Request, res: Response): Promise
         res.status(500).json({ success: false, error: 'Error al consultar logs de auditoría.' });
     }
 };
+
+export const verificarIntegridadCadena = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { eleccionId } = req.query;
+        if (!eleccionId) {
+            res.status(400).json({ success: false, error: 'eleccionId es requerido' });
+            return;
+        }
+
+        const idEleccion = validarUUID(eleccionId, 'ID de Elección');
+        const t0 = Date.now();
+
+        // Obtener todos los votos ordenados por secuencia_conteo ascendente
+        const { data: votos, error } = await urnaDb
+            .from('votos')
+            .select('id_voto, voto_hash, prev_hash, secuencia_conteo, id_candidato')
+            .eq('id_eleccion', idEleccion)
+            .order('secuencia_conteo', { ascending: true });
+
+        if (error) throw error;
+
+        const totalBloques = votos?.length || 0;
+        const bloquesVerificados = [];
+        let esIntegra = true;
+        let motivoFallo: string | null = null;
+        let bloqueInvalidoIndex: number | null = null;
+
+        const GENESIS_DEFAULT = '0000000000000000000000000000000000000000000000000000000000000000';
+
+        if (votos && votos.length > 0) {
+            for (let i = 0; i < votos.length; i++) {
+                const votoActual = votos[i];
+                const secuenciaEsperada = i + 1;
+
+                // 1. Validar secuencia numérica continua
+                if (votoActual.secuencia_conteo !== secuenciaEsperada) {
+                    esIntegra = false;
+                    motivoFallo = `Secuencia rota en bloque #${votoActual.secuencia_conteo}: Se esperaba bloque #${secuenciaEsperada}.`;
+                    bloqueInvalidoIndex = i;
+                    break;
+                }
+
+                // 2. Validar enlace criptográfico previo
+                if (i === 0) {
+                    if (votoActual.prev_hash !== GENESIS_DEFAULT && !votoActual.prev_hash.startsWith('GENESIS')) {
+                        esIntegra = false;
+                        motivoFallo = `El bloque inicial #1 no apunta al hash génesis establecido.`;
+                        bloqueInvalidoIndex = i;
+                        break;
+                    }
+                } else {
+                    const votoPrevio = votos[i - 1];
+                    if (votoActual.prev_hash !== votoPrevio.voto_hash) {
+                        esIntegra = false;
+                        motivoFallo = `Discrepancia criptográfica en bloque #${secuenciaEsperada}: Su prev_hash (${votoActual.prev_hash.substring(0, 12)}...) no coincide con el hash del bloque previo #${i} (${votoPrevio.voto_hash.substring(0, 12)}...).`;
+                        bloqueInvalidoIndex = i;
+                        break;
+                    }
+                }
+
+                bloquesVerificados.push({
+                    secuencia: votoActual.secuencia_conteo,
+                    idVoto: votoActual.id_voto,
+                    votoHash: votoActual.voto_hash,
+                    prevHash: votoActual.prev_hash,
+                    estadoCriptografico: 'VALIDO',
+                });
+            }
+        }
+
+        const duracionMs = Date.now() - t0;
+        const hashRaizFinal = votos && votos.length > 0 ? votos[votos.length - 1].voto_hash : 'SIN_VOTOS';
+
+        res.json({
+            success: true,
+            auditoria: {
+                esIntegra,
+                motivoFallo,
+                bloqueInvalidoIndex,
+                totalBloquesAnalizados: totalBloques,
+                duracionVerificacionMs: duracionMs,
+                hashGenesis: votos && votos.length > 0 ? votos[0].prev_hash : GENESIS_DEFAULT,
+                hashRaizFinal,
+                timestampVerificacion: new Date().toISOString(),
+                bloques: bloquesVerificados,
+            },
+        });
+    } catch (error: any) {
+        console.error('Error al verificar integridad de la cadena:', error);
+        res.status(500).json({ success: false, error: 'Error al ejecutar auditoría matemática de la cadena.' });
+    }
+};

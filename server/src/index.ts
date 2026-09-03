@@ -59,10 +59,13 @@ app.use(
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
+import { checkHealth } from './controllers/healthController';
+
 // 4. Rate Limiting Global
 app.use('/api', apiGlobalLimiter);
 
 // 5. Montaje de rutas de API
+app.get('/api/health', checkHealth);
 app.use('/api/auth', authRoutes);
 app.use('/api/urna', urnaRoutes);
 

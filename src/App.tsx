@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut, ShieldCheck, Play, BarChart3, Lock, FileText, Activity, Users, Menu, X, User } from 'lucide-react';
+import { LogOut, ShieldCheck, Play, BarChart3, Lock, FileText, Activity, Users, Menu, X, User, Link2 } from 'lucide-react';
 import { LoginRol } from './components/LoginRol';
 import { LoginVotante } from './components/LoginVotante';
 import { CabinaVotacion, type Candidato } from './components/CabinaVotacion';
@@ -11,13 +11,15 @@ import { PanelAdminApertura } from './components/PanelAdminApertura';
 import { ActaEscrutinio } from './components/ActaEscrutinio';
 import { PanelLogsAuditoria } from './components/PanelLogsAuditoria';
 import { PanelCredenciales } from './components/PanelCredenciales';
+import { VerificadorCadenaHashes } from './components/VerificadorCadenaHashes';
+import { ToastProvider } from './components/Toast';
 
 const ID_ELECCION_DEFECTO = 'a0000000-0000-0000-0000-000000000001';
 
 type Rol = 'VOTANTE' | 'AUDITOR' | 'ADMIN';
 type VistaVotante = 'LOGIN' | 'CABINA' | 'COMPROBANTE' | 'VERIFICADOR';
-type VistaAdmin = 'APERTURA' | 'ESCRUTINIO' | 'CIERRE' | 'ACTA' | 'LOGS' | 'CREDENCIALES';
-type VistaAuditor = 'VERIFICADOR' | 'ESCRUTINIO' | 'ACTA' | 'LOGS';
+type VistaAdmin = 'APERTURA' | 'ESCRUTINIO' | 'CADENA' | 'CIERRE' | 'ACTA' | 'LOGS' | 'CREDENCIALES';
+type VistaAuditor = 'VERIFICADOR' | 'ESCRUTINIO' | 'CADENA' | 'ACTA' | 'LOGS';
 
 interface UsuarioStaff {
   id: string;
@@ -27,7 +29,7 @@ interface UsuarioStaff {
   rol: Rol;
 }
 
-export function App() {
+function AppContent() {
   const [rolAutenticado, setRolAutenticado] = useState<Rol | null>(null);
   const [usuarioStaff, setUsuarioStaff] = useState<UsuarioStaff | null>(null);
   const [menuMobileAbierto, setMenuMobileAbierto] = useState<boolean>(false);
@@ -107,6 +109,7 @@ export function App() {
   const adminNavItems = [
     { id: 'APERTURA' as VistaAdmin, label: 'Apertura', icon: Play, desc: 'Configurar jornada y planchas' },
     { id: 'ESCRUTINIO' as VistaAdmin, label: 'Escrutinio', icon: BarChart3, desc: 'Conteo y tendencias en vivo' },
+    { id: 'CADENA' as VistaAdmin, label: 'Cadena SHA-256', icon: Link2, desc: 'Auditoría matemática de inmutabilidad' },
     { id: 'CIERRE' as VistaAdmin, label: 'Cierre', icon: Lock, desc: 'Sellado definitivo de la urna' },
     { id: 'ACTA' as VistaAdmin, label: 'Acta Oficial', icon: FileText, desc: 'Generar y descargar acta legal' },
     { id: 'LOGS' as VistaAdmin, label: 'Bitácora', icon: Activity, desc: 'Auditoría y eventos registrados' },
@@ -117,6 +120,7 @@ export function App() {
   const auditorNavItems = [
     { id: 'VERIFICADOR' as VistaAuditor, label: 'Verificador', icon: ShieldCheck, desc: 'Validar comprobantes de votantes' },
     { id: 'ESCRUTINIO' as VistaAuditor, label: 'Escrutinio', icon: BarChart3, desc: 'Resultados y participación' },
+    { id: 'CADENA' as VistaAuditor, label: 'Cadena SHA-256', icon: Link2, desc: 'Verificar eslabones y hashes' },
     { id: 'ACTA' as VistaAuditor, label: 'Acta Oficial', icon: FileText, desc: 'Inspeccionar sellado de acta' },
     { id: 'LOGS' as VistaAuditor, label: 'Bitácora', icon: Activity, desc: 'Trazabilidad de operaciones' },
   ];
@@ -475,6 +479,9 @@ export function App() {
             {vistaAuditor === 'ESCRUTINIO' && (
               <PanelEscrutinio eleccionId={eleccionId} onVolver={() => setVistaAuditor('VERIFICADOR')} />
             )}
+            {vistaAuditor === 'CADENA' && (
+              <VerificadorCadenaHashes eleccionId={eleccionId} onVolver={() => setVistaAuditor('ESCRUTINIO')} />
+            )}
             {vistaAuditor === 'ACTA' && (
               <ActaEscrutinio eleccionId={eleccionId} onVolver={() => setVistaAuditor('VERIFICADOR')} />
             )}
@@ -498,6 +505,9 @@ export function App() {
             )}
             {vistaAdmin === 'ESCRUTINIO' && (
               <PanelEscrutinio eleccionId={eleccionId} onVolver={() => setVistaAdmin('APERTURA')} />
+            )}
+            {vistaAdmin === 'CADENA' && (
+              <VerificadorCadenaHashes eleccionId={eleccionId} onVolver={() => setVistaAdmin('ESCRUTINIO')} />
             )}
             {vistaAdmin === 'CIERRE' && (
               <PanelAdminCierre
@@ -561,6 +571,14 @@ export function App() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   );
 }
 

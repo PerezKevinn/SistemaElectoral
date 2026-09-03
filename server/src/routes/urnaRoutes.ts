@@ -9,6 +9,7 @@ import {
     crearEleccion,
     abrirEleccion,
     obtenerLogsAuditoria,
+    verificarIntegridadCadena,
 } from '../controllers/urnaController';
 import {
     listarStaff,
@@ -32,6 +33,7 @@ router.post('/login-staff', authLimiter, loginStaff);
 router.get('/logs', requireRol(['ADMIN', 'AUDITOR']), obtenerLogsAuditoria);
 router.get('/resultados', requireRol(['ADMIN', 'AUDITOR']), obtenerResultados);
 router.get('/acta', requireRol(['ADMIN', 'AUDITOR']), obtenerActaOficial);
+router.get('/auditoria/cadena', requireRol(['ADMIN', 'AUDITOR']), verificarIntegridadCadena);
 router.post('/crear', requireRol(['ADMIN']), crearEleccion);
 router.post('/abrir', requireRol(['ADMIN']), abrirEleccion);
 router.post('/cerrar', requireRol(['ADMIN']), cerrarEleccion);

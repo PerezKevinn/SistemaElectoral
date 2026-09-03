@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, UserPlus, KeyRound, CheckCircle2, XCircle, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
+import { useToast } from './Toast';
 
 const API_BASE_URL = window.location.hostname === 'localhost' ? '' : 'https://sistema-elecciones-api.onrender.com';
 
@@ -19,6 +20,7 @@ interface PanelCredencialesProps {
 }
 
 export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }) => {
+    const toast = useToast();
     const [personal, setPersonal] = useState<StaffUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [mostrarModalCrear, setMostrarModalCrear] = useState(false);
@@ -113,12 +115,14 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
 
             if (!res.ok || !data.success) throw new Error(data.error || 'Error al crear funcionario');
 
+            toast.success('Funcionario registrado exitosamente en el censo electoral.', 'Personal Registrado');
             setExitoMsg('Funcionario registrado exitosamente.');
             setForm({ documento: '', nombres: '', apellidos: '', cargo: '', rol: 'AUDITOR', password: '' });
             setMostrarModalCrear(false);
             cargarStaff();
         } catch (err: any) {
             setErrorMsg(err.message);
+            toast.error(err.message, 'Error al Crear Funcionario');
         }
     };
 
@@ -132,9 +136,14 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
             let data: any = {};
             try { data = await res.json(); } catch { throw new Error('Error al conectar con el servidor'); }
             if (!res.ok || !data.success) throw new Error(data.error || 'Error al modificar estado');
+
+            toast.success(
+                `Funcionario ${!estadoActual ? 'activado' : 'desactivado'} correctamente.`,
+                'Estado Actualizado'
+            );
             cargarStaff();
         } catch (err: any) {
-            alert(err.message);
+            toast.error(err.message, 'Error al Modificar Estado');
         }
     };
 
@@ -156,12 +165,12 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
             try { data = await res.json(); } catch { throw new Error('Error al conectar con el servidor'); }
             if (!res.ok || !data.success) throw new Error(data.error || 'Error al cambiar contraseña');
 
-            alert('Contraseña actualizada con éxito');
+            toast.success('Contraseña actualizada con éxito y cifrado robusto.', 'Clave Actualizada');
             setModalPasswordId(null);
             setNuevaPassword('');
             cargarStaff();
         } catch (err: any) {
-            alert(err.message);
+            toast.error(err.message, 'Error al Actualizar Contraseña');
         }
     };
 

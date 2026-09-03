@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, ShieldAlert, CheckCircle2, AlertCircle, ArrowLeft, KeySquare } from 'lucide-react';
+import { useToast } from './Toast';
 
 interface CierreResult {
     estado: string;
@@ -19,6 +20,7 @@ export const PanelAdminCierre: React.FC<PanelAdminCierreProps> = ({
     onVolver,
     onCierreCompletado,
 }) => {
+    const toast = useToast();
     const [clave, setClave] = useState('');
     const [loading, setLoading] = useState(false);
     const [resultado, setResultado] = useState<CierreResult | null>(null);
@@ -32,9 +34,13 @@ export const PanelAdminCierre: React.FC<PanelAdminCierreProps> = ({
         setErrorMsg(null);
 
         try {
+            const token = sessionStorage.getItem('staff_token') || localStorage.getItem('auth_token');
             const res = await fetch('/api/urna/cerrar', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify({
                     eleccionId,
                     adminClave: clave,
@@ -48,9 +54,11 @@ export const PanelAdminCierre: React.FC<PanelAdminCierreProps> = ({
             }
 
             setResultado(data.data);
+            toast.success('La jornada electoral ha sido sellada y clausurada oficialmente.', 'Urna Sellada');
             if (onCierreCompletado) onCierreCompletado();
         } catch (err: any) {
             setErrorMsg(err.message);
+            toast.error(err.message, 'Fallo en Cierre de Jornada');
         } finally {
             setLoading(false);
         }

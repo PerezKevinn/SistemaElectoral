@@ -2,33 +2,39 @@ import crypto from 'crypto';
 import { urnaDb } from '../config/supabase';
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/authRole';
+import { validarUUID, validarHexToken } from '../middleware/security';
 
 export const emitirVoto = async (req: Request, res: Response): Promise<void> => {
     try {
         const { eleccionId, tokenPlano, candidatoId } = req.body;
 
         if (!eleccionId || !tokenPlano || !candidatoId) {
-            res.status(400).json({ success: false, error: 'Parámetros de voto incompletos' });
+            res.status(400).json({ success: false, error: 'Parámetros de sufragio incompletos.' });
             return;
         }
 
-        // Calcular hash SHA-256 del token plano recibido
-        const tokenHash = crypto.createHash('sha256').update(tokenPlano).digest('hex');
+        const idEleccion = validarUUID(eleccionId, 'ID de Elección');
+        const idCandidato = validarUUID(candidatoId, 'ID de Candidato');
+        const tokenLimpio = validarHexToken(tokenPlano);
 
-        // Invocar el procedimiento almacenado (RPC) atómico creado en Supabase
+        // Calcular hash criptográfico SHA-256 del token ciego
+        const tokenHash = crypto.createHash('sha256').update(tokenLimpio).digest('hex');
+
+        // Invocar el procedimiento almacenado (RPC) atómico en la Urna Digital
         const { data, error } = await urnaDb.rpc('registrar_voto_seguro', {
-            p_id_eleccion: eleccionId,
+            p_id_eleccion: idEleccion,
             p_token_hash: tokenHash,
-            p_id_candidato: candidatoId,
+            p_id_candidato: idCandidato,
         });
 
         if (error) {
-            res.status(500).json({ success: false, error: error.message });
+            console.error('Error en RPC registrar_voto_seguro:', error);
+            res.status(500).json({ success: false, error: 'Error al depositar el voto en la urna digital.' });
             return;
         }
 
-        if (!data.success) {
-            res.status(400).json({ success: false, error: data.error });
+        if (!data || !data.success) {
+            res.status(400).json({ success: false, error: data?.error || 'Token inválido o ya consumido.' });
             return;
         }
 
@@ -38,7 +44,11 @@ export const emitirVoto = async (req: Request, res: Response): Promise<void> => 
             comprobanteHash: data.comprobante_hash,
         });
     } catch (error: any) {
-        res.status(500).json({ success: false, error: error.message || 'Error al procesar el depósito' });
+        console.error('⚠️ [SEGURIDAD] Error en emitirVoto:', error.message);
+        res.status(error.message?.includes('formato') ? 400 : 500).json({
+            success: false,
+            error: error.message?.includes('formato') ? error.message : 'Error al procesar el depósito del voto.',
+        });
     }
 };
 
@@ -51,10 +61,12 @@ export const obtenerCandidatos = async (req: Request, res: Response): Promise<vo
             return;
         }
 
+        const idEleccion = validarUUID(eleccionId, 'ID de Elección');
+
         const { data: candidatos, error } = await urnaDb
             .from('candidatos')
             .select('id_candidato, numero_lista, nombre_completo, foto_url')
-            .eq('id_eleccion', eleccionId)
+            .eq('id_eleccion', idEleccion)
             .order('numero_lista', { ascending: true });
 
         if (error) {
@@ -63,7 +75,7 @@ export const obtenerCandidatos = async (req: Request, res: Response): Promise<vo
 
         res.json({
             success: true,
-            candidatos: candidatos.map((c) => ({
+            candidatos: (candidatos || []).map((c) => ({
                 id: c.id_candidato,
                 nombre: c.nombre_completo,
                 numeroLista: c.numero_lista,
@@ -71,7 +83,10 @@ export const obtenerCandidatos = async (req: Request, res: Response): Promise<vo
             })),
         });
     } catch (error: any) {
-        res.status(500).json({ success: false, error: error.message || 'Error al obtener candidatos' });
+        res.status(error.message?.includes('formato') ? 400 : 500).json({
+            success: false,
+            error: error.message || 'Error al obtener candidatos.',
+        });
     }
 };
 
@@ -84,8 +99,10 @@ export const obtenerResultados = async (req: Request, res: Response): Promise<vo
             return;
         }
 
+        const idEleccion = validarUUID(eleccionId, 'ID de Elección');
+
         const { data, error } = await urnaDb.rpc('obtener_escrutinio', {
-            p_eleccion_id: eleccionId,
+            p_eleccion_id: idEleccion,
         });
 
         if (error) throw error;
@@ -97,21 +114,16 @@ export const obtenerResultados = async (req: Request, res: Response): Promise<vo
     } catch (error: any) {
         res.status(500).json({
             success: false,
-            error: error.message || 'Error al obtener escrutinio',
+            error: 'Error al obtener escrutinio institucional.',
         });
     }
 };
 
 export const verificarComprobante = async (req: Request, res: Response): Promise<void> => {
     try {
-        const hash = (req.body.comprobanteHash || req.body.hash || '').toString().trim();
+        const hashRaw = (req.body.comprobanteHash || req.body.hash || '');
+        const hash = validarHexToken(hashRaw);
 
-        if (!hash) {
-            res.status(400).json({ success: false, error: 'Hash del comprobante requerido' });
-            return;
-        }
-
-        // Consulta sin la columna inexistente creado_at
         const { data: voto, error } = await urnaDb
             .from('votos')
             .select('id_voto, id_eleccion, voto_hash, secuencia_conteo')
@@ -138,8 +150,11 @@ export const verificarComprobante = async (req: Request, res: Response): Promise
             fecha: new Date().toISOString(),
         });
     } catch (err: any) {
-        console.error('Error al verificar comprobante:', err);
-        res.status(500).json({ success: false, error: err.message || 'Error interno al consultar la urna' });
+        console.error('Error al verificar comprobante:', err.message);
+        res.status(err.message?.includes('formato') ? 400 : 500).json({
+            success: false,
+            error: err.message || 'Error interno al consultar la urna digital.',
+        });
     }
 };
 

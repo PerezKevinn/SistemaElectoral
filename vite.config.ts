@@ -11,4 +11,10 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    // Deshabilita los archivos .map para que nadie pueda ver el código fuente original TypeScript en DevTools
+    sourcemap: false,
+    minify: 'esbuild',
+    chunkSizeWarningLimit: 1000,
+  },
 });

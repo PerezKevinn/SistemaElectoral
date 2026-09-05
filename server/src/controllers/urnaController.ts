@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { urnaDb } from '../config/supabase';
+import { urnaDb, censoDb } from '../config/supabase';
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/authRole';
 import { validarUUID, validarHexToken } from '../middleware/security';
@@ -283,7 +283,7 @@ export const abrirEleccion = async (req: AuthRequest, res: Response): Promise<vo
     try {
         const { eleccionId, adminClave } = req.body;
 
-        const ejecutadoPor = req.usuario?.id || 'ADMIN_OFICIAL';
+        const ejecutadoPor = req.usuario?.nombre || req.usuario?.documento || req.usuario?.id || 'Administrador General';
         const ipOrigen = req.ip || (req.headers['x-forwarded-for'] as string) || '127.0.0.1';
         const userAgent = (req.headers['user-agent'] as string) || 'Desconocido';
 
@@ -313,7 +313,7 @@ export const cerrarEleccion = async (req: AuthRequest, res: Response): Promise<v
         const { eleccionId, adminClave } = req.body;
 
         // Obtener identidad del usuario desde el JWT o fallback
-        const ejecutadoPor = req.usuario?.id || 'ADMIN_OFICIAL';
+        const ejecutadoPor = req.usuario?.nombre || req.usuario?.documento || req.usuario?.id || 'Administrador General';
         const ipOrigen = req.ip || (req.headers['x-forwarded-for'] as string) || '127.0.0.1';
         const userAgent = req.headers['user-agent'] || 'Desconocido';
 
@@ -444,10 +444,52 @@ export const obtenerLogsAuditoria = async (req: Request, res: Response): Promise
             query = query.or(`id_eleccion.eq.${idEleccion},id_eleccion.is.null`);
         }
 
-        const { data, error } = await query;
+        const { data: logs, error } = await query;
         if (error) throw error;
 
-        res.json({ success: true, eleccionId: idEleccion, logs: data || [] });
+        // Consultar personal electoral en el censo para mapear UUIDs -> Nombres legibles
+        const { data: personal } = await censoDb
+            .from('personal_electoral')
+            .select('id, documento_identidad, nombres, apellidos, cargo, rol');
+
+        const mapPersonal: Record<string, { nombre: string; cargo: string; documento: string; rol: string }> = {};
+        if (personal) {
+            for (const p of personal) {
+                const nombreCompleto = `${p.nombres || ''} ${p.apellidos || ''}`.trim() || p.documento_identidad;
+                const info = {
+                    nombre: nombreCompleto,
+                    cargo: p.cargo || '',
+                    documento: p.documento_identidad || '',
+                    rol: p.rol || '',
+                };
+                if (p.id) mapPersonal[p.id] = info;
+                if (p.documento_identidad) mapPersonal[p.documento_identidad] = info;
+            }
+        }
+
+        const logsEnriquecidos = (logs || []).map((log) => {
+            const ejecutado = String(log.ejecutado_por || '').trim();
+            const match = mapPersonal[ejecutado];
+            
+            let nombreUsuario = ejecutado;
+            if (match) {
+                nombreUsuario = match.nombre;
+            } else if (ejecutado === 'ADMIN_OFICIAL' || ejecutado === 'ADMIN' || !ejecutado) {
+                nombreUsuario = 'Administrador General';
+            } else if (ejecutado.length > 25 && /^[0-9a-fA-F-]+$/.test(ejecutado)) {
+                // Si es un UUID que no coincidió, mostrar Administrador Autorizado
+                nombreUsuario = 'Administrador Autorizado';
+            }
+
+            return {
+                ...log,
+                ejecutado_por_nombre: nombreUsuario,
+                cargo_usuario: match?.cargo || (ejecutado === 'ADMIN_OFICIAL' ? 'Administrador General' : null),
+                rol_usuario: match?.rol || null,
+            };
+        });
+
+        res.json({ success: true, eleccionId: idEleccion, logs: logsEnriquecidos });
     } catch (error: any) {
         res.status(500).json({ success: false, error: 'Error al consultar logs de auditoría.' });
     }

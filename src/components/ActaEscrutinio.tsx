@@ -38,13 +38,16 @@ interface ActaEscrutinioProps {
 export const ActaEscrutinio: React.FC<ActaEscrutinioProps> = ({ eleccionId, onVolver }) => {
     const [acta, setActa] = useState<ActaData | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     const cargarActa = async () => {
         setLoading(true);
+        setErrorMsg(null);
         try {
-            const token = sessionStorage.getItem('staff_token');
+            const token = sessionStorage.getItem('staff_token') || localStorage.getItem('auth_token');
+            const url = eleccionId ? `/api/urna/acta?eleccionId=${eleccionId}` : '/api/urna/acta';
 
-            const res = await fetch(`/api/urna/acta?eleccionId=${eleccionId}`, {
+            const res = await fetch(url, {
                 headers: {
                     'Content-Type': 'application/json',
                     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -53,14 +56,18 @@ export const ActaEscrutinio: React.FC<ActaEscrutinioProps> = ({ eleccionId, onVo
 
             if (res.ok) {
                 const data = await res.json();
-                if (data.success) {
+                if (data.success && data.acta) {
                     setActa(data.acta);
                 } else {
-                    console.error('Error al obtener acta:', data.error);
+                    setErrorMsg(data.error || 'Error al obtener el acta oficial');
                 }
+            } else {
+                const errData = await res.json().catch(() => null);
+                setErrorMsg(errData?.error || `No se pudo consolidar el acta oficial (${res.status})`);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error de red al cargar acta:', err);
+            setErrorMsg(err.message || 'Error de conexión con la urna');
         } finally {
             setLoading(false);
         }
@@ -76,7 +83,8 @@ export const ActaEscrutinio: React.FC<ActaEscrutinioProps> = ({ eleccionId, onVo
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `acta_escrutinio_${eleccionId.substring(0, 8)}.json`;
+        const safeId = (acta.eleccion?.id || eleccionId || 'general').substring(0, 8);
+        link.download = `acta_escrutinio_${safeId}.json`;
         link.click();
         URL.revokeObjectURL(url);
     };
@@ -87,17 +95,35 @@ export const ActaEscrutinio: React.FC<ActaEscrutinioProps> = ({ eleccionId, onVo
 
     if (loading) {
         return (
-            <div className="w-full max-w-4xl mx-auto p-12 text-center text-slate-400 text-sm glass-panel rounded-2xl">
-                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-3 text-cyan-400" />
-                <span>Generando acta oficial con sellado digital de custodia...</span>
+            <div className="w-full max-w-4xl mx-auto p-12 text-center text-slate-400 text-sm glass-panel rounded-2xl space-y-3">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto text-cyan-400" />
+                <span className="block font-medium">Generando acta oficial con sellado digital de custodia...</span>
+                <span className="text-xs text-slate-500">Auditando consistencia matemática 1:1 con la urna digital</span>
             </div>
         );
     }
 
     if (!acta) {
         return (
-            <div className="w-full max-w-4xl mx-auto p-8 glass-panel rounded-2xl text-center text-slate-400 text-sm">
-                No se pudo consolidar el acta oficial de la elección.
+            <div className="w-full max-w-4xl mx-auto p-8 glass-panel rounded-2xl text-center text-slate-300 text-sm space-y-4">
+                <div className="text-rose-400 font-semibold">{errorMsg || 'No se pudo consolidar el acta oficial de la elección.'}</div>
+                <div className="text-xs text-slate-400">Verifique que exista una jornada electoral iniciada y que cuente con los permisos de auditoría correspondientes.</div>
+                <div className="flex items-center justify-center gap-3 pt-2">
+                    <button
+                        onClick={cargarActa}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-xs transition cursor-pointer"
+                    >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Reintentar</span>
+                    </button>
+                    <button
+                        onClick={onVolver}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 font-semibold rounded-xl text-xs transition cursor-pointer"
+                    >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        <span>Volver</span>
+                    </button>
+                </div>
             </div>
         );
     }

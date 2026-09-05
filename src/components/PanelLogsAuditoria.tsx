@@ -23,8 +23,9 @@ export const PanelLogsAuditoria: React.FC<PanelLogsAuditoriaProps> = ({ eleccion
     const cargarLogs = async () => {
         setLoading(true);
         try {
-            const token = sessionStorage.getItem('staff_token');
-            const res = await fetch(`/api/urna/logs?eleccionId=${eleccionId}`, {
+            const token = sessionStorage.getItem('staff_token') || localStorage.getItem('auth_token');
+            const url = eleccionId ? `/api/urna/logs?eleccionId=${eleccionId}` : '/api/urna/logs';
+            const res = await fetch(url, {
                 headers: {
                     'Content-Type': 'application/json',
                     ...(token ? { Authorization: `Bearer ${token}` } : {}),

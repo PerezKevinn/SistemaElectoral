@@ -49,17 +49,13 @@ export const VerificadorCadenaHashes: React.FC<VerificadorCadenaProps> = ({ elec
     const toast = useToast();
 
     const ejecutarAuditoria = async () => {
-        if (!eleccionId) {
-            setErrorMsg('No se especificó el ID de la elección para auditar.');
-            return;
-        }
-
         setLoading(true);
         setErrorMsg(null);
 
         try {
             const token = sessionStorage.getItem('staff_token') || localStorage.getItem('auth_token');
-            const res = await fetch(`/api/urna/auditoria/cadena?eleccionId=${eleccionId}`, {
+            const url = eleccionId ? `/api/urna/auditoria/cadena?eleccionId=${eleccionId}` : '/api/urna/auditoria/cadena';
+            const res = await fetch(url, {
                 headers: {
                     'Content-Type': 'application/json',
                     ...(token ? { Authorization: `Bearer ${token}` } : {}),

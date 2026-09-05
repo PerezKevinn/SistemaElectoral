@@ -24,13 +24,16 @@ interface PanelEscrutinioProps {
 export const PanelEscrutinio: React.FC<PanelEscrutinioProps> = ({ eleccionId, onVolver }) => {
     const [data, setData] = useState<EscrutinioData | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     const cargarEscrutinio = async () => {
         setLoading(true);
+        setErrorMsg(null);
         try {
-            const token = sessionStorage.getItem('staff_token');
+            const token = sessionStorage.getItem('staff_token') || localStorage.getItem('auth_token');
+            const url = eleccionId ? `/api/urna/resultados?eleccionId=${eleccionId}` : '/api/urna/resultados';
 
-            const res = await fetch(`/api/urna/resultados?eleccionId=${eleccionId}`, {
+            const res = await fetch(url, {
                 headers: {
                     'Content-Type': 'application/json',
                     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -41,10 +44,16 @@ export const PanelEscrutinio: React.FC<PanelEscrutinioProps> = ({ eleccionId, on
                 const json = await res.json();
                 if (json.success && json.data) {
                     setData(json.data);
+                } else {
+                    setErrorMsg(json.error || 'Error al obtener resultados');
                 }
+            } else {
+                const errData = await res.json().catch(() => null);
+                setErrorMsg(errData?.error || `Error del servidor (${res.status})`);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error al cargar resultados:', err);
+            setErrorMsg(err.message || 'Error de conexión');
         } finally {
             setLoading(false);
         }
@@ -86,6 +95,18 @@ export const PanelEscrutinio: React.FC<PanelEscrutinioProps> = ({ eleccionId, on
                 </div>
             </div>
 
+            {errorMsg && (
+                <div className="p-4 bg-rose-950/40 border border-rose-800/80 rounded-xl text-rose-300 text-xs flex items-center justify-between">
+                    <span>{errorMsg}</span>
+                    <button
+                        onClick={cargarEscrutinio}
+                        className="px-2.5 py-1 bg-rose-900/60 hover:bg-rose-800 border border-rose-700 text-white rounded-lg text-xs"
+                    >
+                        Reintentar
+                    </button>
+                </div>
+            )}
+
             {/* Métricas de Auditoría */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 <div className="p-4 bg-slate-950/80 border border-slate-800/80 rounded-xl">
@@ -119,30 +140,41 @@ export const PanelEscrutinio: React.FC<PanelEscrutinioProps> = ({ eleccionId, on
             <div className="space-y-3">
                 <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Desglose por Lista / Opción</h3>
 
-                {data?.conteo.map((item) => (
-                    <div key={item.id_candidato} className="p-4 bg-slate-950/70 border border-slate-800/80 rounded-xl space-y-2.5">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
-                            <div className="flex items-center space-x-2">
-                                <span className="px-2 py-0.5 bg-slate-800 text-indigo-300 font-bold font-mono rounded">
-                                    #{item.numero_lista}
-                                </span>
-                                <span className="font-semibold text-slate-100">{item.nombre_completo}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="font-bold text-white font-mono text-sm">{item.total_votos} votos</span>
-                                <span className="text-emerald-400 font-mono font-semibold">({item.porcentaje}%)</span>
-                            </div>
-                        </div>
-
-                        {/* Barra de Progreso */}
-                        <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-800">
-                            <div
-                                className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500"
-                                style={{ width: `${item.porcentaje}%` }}
-                            />
-                        </div>
+                {loading && !data ? (
+                    <div className="text-center py-8 text-slate-400 text-xs">
+                        <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-emerald-400" />
+                        <span>Consolidando resultados desde la urna...</span>
                     </div>
-                ))}
+                ) : !data?.conteo || data.conteo.length === 0 ? (
+                    <div className="p-6 bg-slate-950/60 border border-slate-800/70 rounded-xl text-center text-slate-400 text-xs">
+                        No hay candidaturas registradas o votos emitidos en esta elección todavía.
+                    </div>
+                ) : (
+                    data.conteo.map((item) => (
+                        <div key={item.id_candidato} className="p-4 bg-slate-950/70 border border-slate-800/80 rounded-xl space-y-2.5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                                <div className="flex items-center space-x-2">
+                                    <span className="px-2 py-0.5 bg-slate-800 text-indigo-300 font-bold font-mono rounded">
+                                        #{item.numero_lista}
+                                    </span>
+                                    <span className="font-semibold text-slate-100">{item.nombre_completo}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-white font-mono text-sm">{item.total_votos} votos</span>
+                                    <span className="text-emerald-400 font-mono font-semibold">({item.porcentaje}%)</span>
+                                </div>
+                            </div>
+
+                            {/* Barra de Progreso */}
+                            <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-800">
+                                <div
+                                    className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500"
+                                    style={{ width: `${item.porcentaje}%` }}
+                                />
+                            </div>
+                        </div>
+                    ))
+                )}
             </div>
         </div>
     );

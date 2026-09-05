@@ -14,7 +14,13 @@ import { PanelCredenciales } from './components/PanelCredenciales';
 import { VerificadorCadenaHashes } from './components/VerificadorCadenaHashes';
 import { ToastProvider } from './components/Toast';
 
-const ID_ELECCION_DEFECTO = 'a0000000-0000-0000-0000-000000000001';
+interface EleccionInfo {
+  id_eleccion: string;
+  titulo: string;
+  descripcion?: string;
+  estado: string;
+  creado_at?: string;
+}
 
 type Rol = 'VOTANTE' | 'AUDITOR' | 'ADMIN';
 type VistaVotante = 'LOGIN' | 'CABINA' | 'COMPROBANTE' | 'VERIFICADOR';
@@ -39,10 +45,59 @@ function AppContent() {
   const [vistaAuditor, setVistaAuditor] = useState<VistaAuditor>('VERIFICADOR');
 
   const [tokenVotacion, setTokenVotacion] = useState<string | null>(null);
-  const [eleccionId, setEleccionId] = useState<string>(ID_ELECCION_DEFECTO);
+  const [eleccionId, setEleccionId] = useState<string>(() => sessionStorage.getItem('eleccion_activa_id') || '');
+  const [eleccionActual, setEleccionActual] = useState<EleccionInfo | null>(null);
+  const [listaElecciones, setListaElecciones] = useState<EleccionInfo[]>([]);
   const [candidatos, setCandidatos] = useState<Candidato[]>([]);
   const [loadingCandidatos, setLoadingCandidatos] = useState<boolean>(false);
   const [comprobante, setComprobante] = useState<string | null>(null);
+
+  const cargarEleccionActiva = async () => {
+    try {
+      const res = await fetch('/api/urna/activa');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.eleccion) {
+          setEleccionId(data.eleccion.id_eleccion);
+          setEleccionActual(data.eleccion);
+          sessionStorage.setItem('eleccion_activa_id', data.eleccion.id_eleccion);
+        }
+      }
+    } catch (e) {
+      console.error('Error al cargar elección activa:', e);
+    }
+  };
+
+  const cargarTodasElecciones = async () => {
+    try {
+      const token = sessionStorage.getItem('staff_token') || localStorage.getItem('auth_token');
+      const res = await fetch('/api/urna/elecciones', {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.elecciones) {
+          setListaElecciones(data.elecciones);
+        }
+      }
+    } catch (e) {
+      console.error('Error al cargar lista de elecciones:', e);
+    }
+  };
+
+  useEffect(() => {
+    cargarEleccionActiva();
+  }, []);
+
+  useEffect(() => {
+    if (rolAutenticado === 'ADMIN' || rolAutenticado === 'AUDITOR') {
+      cargarTodasElecciones();
+      cargarEleccionActiva();
+    }
+  }, [rolAutenticado]);
 
   // Cargar usuario staff desde almacenamiento si existe
   useEffect(() => {
@@ -75,6 +130,7 @@ function AppContent() {
   const handleLoginExitoso = (token: string, eleccion: string) => {
     setTokenVotacion(token);
     setEleccionId(eleccion);
+    sessionStorage.setItem('eleccion_activa_id', eleccion);
     setPasoVotante('CABINA');
   };
 
@@ -103,6 +159,15 @@ function AppContent() {
     setTokenVotacion(null);
     setComprobante(null);
     setPasoVotante('LOGIN');
+  };
+
+  const handleCambiarEleccion = (id: string) => {
+    const seleccionada = listaElecciones.find((el) => el.id_eleccion === id);
+    if (seleccionada) {
+      setEleccionId(seleccionada.id_eleccion);
+      setEleccionActual(seleccionada);
+      sessionStorage.setItem('eleccion_activa_id', seleccionada.id_eleccion);
+    }
   };
 
   // Opciones de navegación Admin
@@ -166,6 +231,39 @@ function AppContent() {
             {/* Session Actions Desktop */}
             {rolAutenticado && (
               <div className="hidden xl:flex items-center gap-1.5">
+                {/* Election Selector / Badge for Staff */}
+                {(rolAutenticado === 'ADMIN' || rolAutenticado === 'AUDITOR') && eleccionActual && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs">
+                    <span className="text-slate-400">Jornada:</span>
+                    {listaElecciones.length > 1 ? (
+                      <select
+                        value={eleccionId}
+                        onChange={(e) => handleCambiarEleccion(e.target.value)}
+                        className="bg-slate-950 border border-slate-700 text-white rounded-lg px-2 py-0.5 text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer max-w-[200px]"
+                      >
+                        {listaElecciones.map((el) => (
+                          <option key={el.id_eleccion} value={el.id_eleccion}>
+                            {el.titulo} ({el.estado})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="font-semibold text-slate-200 max-w-[180px] truncate" title={eleccionActual.titulo}>
+                        {eleccionActual.titulo}
+                      </span>
+                    )}
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                        eleccionActual.estado === 'ABIERTA'
+                          ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
+                          : 'bg-slate-800 text-slate-400 border border-slate-700'
+                      }`}
+                    >
+                      {eleccionActual.estado}
+                    </span>
+                  </div>
+                )}
+
                 {/* Profile Badge */}
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs">
                   <span className="text-slate-400">Rol:</span>
@@ -294,7 +392,7 @@ function AppContent() {
 
             {/* User info on mobile */}
             {usuarioStaff && (
-              <div className="p-3 mb-4 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+              <div className="p-3 mb-3 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
                     <User className="w-4 h-4" />
@@ -306,6 +404,39 @@ function AppContent() {
                 </div>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-950 text-indigo-300 border border-indigo-800/60">
                   {usuarioStaff.rol}
+                </span>
+              </div>
+            )}
+
+            {/* Election info on mobile for staff */}
+            {(rolAutenticado === 'ADMIN' || rolAutenticado === 'AUDITOR') && eleccionActual && (
+              <div className="p-3 mb-4 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+                <div className="flex-1 min-w-0 mr-2">
+                  <span className="text-[10px] text-slate-400 block uppercase font-mono">Jornada Activa</span>
+                  {listaElecciones.length > 1 ? (
+                    <select
+                      value={eleccionId}
+                      onChange={(e) => handleCambiarEleccion(e.target.value)}
+                      className="w-full mt-1 bg-slate-950 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none cursor-pointer"
+                    >
+                      {listaElecciones.map((el) => (
+                        <option key={el.id_eleccion} value={el.id_eleccion}>
+                          {el.titulo} ({el.estado})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-xs font-bold text-white block truncate">{eleccionActual.titulo}</span>
+                  )}
+                </div>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                    eleccionActual.estado === 'ABIERTA'
+                      ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700'
+                  }`}
+                >
+                  {eleccionActual.estado}
                 </span>
               </div>
             )}
@@ -361,6 +492,7 @@ function AppContent() {
                     <button
                       key={item.id}
                       onClick={() => {
+                        setVistaAdmin(item.id as any);
                         setVistaAuditor(item.id);
                         setMenuMobileAbierto(false);
                       }}
@@ -498,6 +630,9 @@ function AppContent() {
               <PanelAdminApertura
                 onEleccionIniciada={(id) => {
                   setEleccionId(id);
+                  sessionStorage.setItem('eleccion_activa_id', id);
+                  cargarEleccionActiva();
+                  cargarTodasElecciones();
                   setVistaAdmin('ESCRUTINIO');
                 }}
                 onVolver={() => setVistaAdmin('ESCRUTINIO')}
@@ -513,7 +648,11 @@ function AppContent() {
               <PanelAdminCierre
                 eleccionId={eleccionId}
                 onVolver={() => setVistaAdmin('ESCRUTINIO')}
-                onCierreCompletado={() => setVistaAdmin('ACTA')}
+                onCierreCompletado={() => {
+                  cargarEleccionActiva();
+                  cargarTodasElecciones();
+                  setVistaAdmin('ACTA');
+                }}
               />
             )}
             {vistaAdmin === 'ACTA' && (

@@ -4,6 +4,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import authRoutes from './routes/authRoutes';
 import urnaRoutes from './routes/urnaRoutes';
+import censoRoutes from './routes/censoRoutes';
 import { apiGlobalLimiter } from './middleware/security';
 
 dotenv.config();
@@ -60,9 +61,9 @@ app.use(
     })
 );
 
-// 3. Límites de tamaño de payload y parsing seguro
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+// 3. Límites de tamaño de payload y parsing seguro (10mb para importación de censo)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 import { checkHealth } from './controllers/healthController';
 
@@ -73,6 +74,7 @@ app.use('/api', apiGlobalLimiter);
 app.get('/api/health', checkHealth);
 app.use('/api/auth', authRoutes);
 app.use('/api/urna', urnaRoutes);
+app.use('/api/censo', censoRoutes);
 
 // 6. Manejador de rutas inexistentes (404 seguro)
 app.use((req: Request, res: Response) => {

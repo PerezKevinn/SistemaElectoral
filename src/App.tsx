@@ -11,6 +11,7 @@ import { PanelAdminApertura } from './components/PanelAdminApertura';
 import { ActaEscrutinio } from './components/ActaEscrutinio';
 import { PanelLogsAuditoria } from './components/PanelLogsAuditoria';
 import { PanelCredenciales } from './components/PanelCredenciales';
+import { PanelCensoVotantes } from './components/PanelCensoVotantes';
 import { VerificadorCadenaHashes } from './components/VerificadorCadenaHashes';
 import { ToastProvider } from './components/Toast';
 
@@ -24,7 +25,7 @@ interface EleccionInfo {
 
 type Rol = 'VOTANTE' | 'AUDITOR' | 'ADMIN';
 type VistaVotante = 'LOGIN' | 'CABINA' | 'COMPROBANTE' | 'VERIFICADOR';
-type VistaAdmin = 'APERTURA' | 'ESCRUTINIO' | 'CADENA' | 'CIERRE' | 'ACTA' | 'LOGS' | 'CREDENCIALES';
+type VistaAdmin = 'APERTURA' | 'ESCRUTINIO' | 'CADENA' | 'CIERRE' | 'ACTA' | 'LOGS' | 'CREDENCIALES' | 'CENSO_VOTANTES';
 type VistaAuditor = 'VERIFICADOR' | 'ESCRUTINIO' | 'CADENA' | 'ACTA' | 'LOGS';
 
 interface UsuarioStaff {
@@ -173,12 +174,13 @@ function AppContent() {
   // Opciones de navegación Admin
   const adminNavItems = [
     { id: 'APERTURA' as VistaAdmin, label: 'Apertura', icon: Play, desc: 'Configurar jornada y planchas' },
+    { id: 'CENSO_VOTANTES' as VistaAdmin, label: 'Censo / Votantes', icon: Users, desc: 'Carga Excel y gestión de electores' },
     { id: 'ESCRUTINIO' as VistaAdmin, label: 'Escrutinio', icon: BarChart3, desc: 'Conteo y tendencias en vivo' },
     //{ id: 'CADENA' as VistaAdmin, label: 'Cadena SHA-256', icon: Link2, desc: 'Auditoría matemática de inmutabilidad' },
     { id: 'CIERRE' as VistaAdmin, label: 'Cierre', icon: Lock, desc: 'Sellado definitivo de la urna' },
     { id: 'ACTA' as VistaAdmin, label: 'Acta Oficial', icon: FileText, desc: 'Generar y descargar acta legal' },
     { id: 'LOGS' as VistaAdmin, label: 'Bitácora', icon: Activity, desc: 'Auditoría y eventos registrados' },
-    { id: 'CREDENCIALES' as VistaAdmin, label: 'Personal / Staff', icon: Users, desc: 'Administrar accesos y roles' },
+    { id: 'CREDENCIALES' as VistaAdmin, label: 'Personal / Staff', icon: ShieldCheck, desc: 'Administrar accesos y roles' },
   ];
 
   // Opciones de navegación Auditor
@@ -661,6 +663,9 @@ function AppContent() {
             )}
             {vistaAdmin === 'CREDENCIALES' && (
               <PanelCredenciales onVolver={() => setVistaAdmin('ESCRUTINIO')} />
+            )}
+            {vistaAdmin === 'CENSO_VOTANTES' && (
+              <PanelCensoVotantes onVolver={() => setVistaAdmin('ESCRUTINIO')} />
             )}
           </div>
         )}

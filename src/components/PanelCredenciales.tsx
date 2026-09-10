@@ -33,7 +33,7 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
         nombres: '',
         apellidos: '',
         cargo: '',
-        rol: 'AUDITOR' as 'ADMIN' | 'AUDITOR',
+        rol: 'AUDITOR' as 'AUDITOR',
         password: '',
     });
 
@@ -396,15 +396,11 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-slate-300 font-semibold mb-1">Rol</label>
-                                    <select
-                                        value={form.rol}
-                                        onChange={(e) => setForm({ ...form, rol: e.target.value as any })}
-                                        className="w-full px-3 py-2 bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-lg text-white outline-none"
-                                    >
-                                        <option value="AUDITOR">AUDITOR</option>
-                                        <option value="ADMIN">ADMIN</option>
-                                    </select>
+                                    <label className="block text-slate-300 font-semibold mb-1">Rol Asignado</label>
+                                    <div className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-emerald-400 font-medium flex items-center justify-between">
+                                        <span className="font-semibold text-xs">AUDITOR</span>
+                                        <span className="text-[10px] text-slate-500 font-normal">Garante Oficial</span>
+                                    </div>
                                 </div>
                             </div>
 

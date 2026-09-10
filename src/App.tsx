@@ -14,9 +14,7 @@ import { PanelCredenciales } from './components/PanelCredenciales';
 import { VerificadorCadenaHashes } from './components/VerificadorCadenaHashes';
 import { ToastProvider } from './components/Toast';
 
-// TODO: - Visualizar contraseña
-//       - Quitar rol admin
-//       - Quitar "Este usuario pertenece al rol AUDITOR, no a ADMIN." - Vulnerabilidad
+// TODO: - Quitar "Este usuario pertenece al rol AUDITOR, no a ADMIN." - Vulnerabilidad
 
 interface EleccionInfo {
   id_eleccion: string;

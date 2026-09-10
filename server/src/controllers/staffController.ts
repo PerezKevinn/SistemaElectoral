@@ -124,8 +124,13 @@ export const crearStaff = async (req: AuthRequest, res: Response): Promise<void>
         const passLimpia = validarPasswordFuerte(password);
 
         const rolNormalizado = rol.toString().toUpperCase().trim();
-        if (rolNormalizado !== 'ADMIN' && rolNormalizado !== 'AUDITOR') {
-            res.status(400).json({ success: false, error: 'El rol asignado debe ser ADMIN o AUDITOR.' });
+        if (rolNormalizado === 'ADMIN') {
+            res.status(403).json({ success: false, error: 'Por motivos de seguridad, no está permitido registrar nuevos usuarios con rol ADMIN.' });
+            return;
+        }
+
+        if (rolNormalizado !== 'AUDITOR') {
+            res.status(400).json({ success: false, error: 'El rol asignado debe ser AUDITOR.' });
             return;
         }
 

@@ -133,7 +133,7 @@ export const PanelAdminCierre: React.FC<PanelAdminCierreProps> = ({
                     <button
                         type="submit"
                         disabled={loading || !clave}
-                        className="w-full py-3.5 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 disabled:bg-slate-800 disabled:text-slate-600 text-white font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer shadow-lg shadow-rose-950/60"
+                        className="w-full py-3.5 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer disabled:cursor-not-allowed shadow-lg shadow-rose-950/60"
                     >
                         {loading ? 'Sellando Urna Definitivamente...' : 'Proceder con el Cierre Electoral'}
                     </button>

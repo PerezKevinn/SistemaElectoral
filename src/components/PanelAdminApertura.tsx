@@ -236,7 +236,7 @@ export const PanelAdminApertura: React.FC<PanelAdminAperturaProps> = ({ onElecci
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 disabled:bg-slate-800 text-white font-bold rounded-xl transition shadow-lg shadow-indigo-950/60 cursor-pointer disabled:cursor-not-allowed text-xs sm:text-sm"
+                        className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 disabled:opacity-50 text-white font-bold rounded-xl transition shadow-lg shadow-indigo-950/60 cursor-pointer disabled:cursor-not-allowed text-xs sm:text-sm"
                     >
                         {loading ? 'Aperturando Jornada Electoral...' : 'Crear y Abrir Elección Oficial'}
                     </button>

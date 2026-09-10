@@ -90,7 +90,7 @@ export const VerificadorComprobante: React.FC<VerificadorProps> = ({ eleccionId,
                 <button
                     type="submit"
                     disabled={loading || !hash.trim()}
-                    className="w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 disabled:bg-slate-800 text-white font-bold rounded-xl transition cursor-pointer flex items-center justify-center space-x-2 text-xs sm:text-sm shadow-lg shadow-cyan-950/50"
+                    className="w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 disabled:opacity-50 text-white font-bold rounded-xl transition cursor-pointer disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-xs sm:text-sm shadow-lg shadow-cyan-950/50"
                 >
                     <Search className="w-4 h-4" />
                     <span>{loading ? 'Verificando en Urna...' : 'Verificar Inclusión en Urna'}</span>

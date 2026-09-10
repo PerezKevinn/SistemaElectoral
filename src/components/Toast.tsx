@@ -98,30 +98,32 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return (
         <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
             {children}
-            {/* Toast Container Flotante */}
-            <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2.5 max-w-sm w-full px-3 sm:px-0 pointer-events-none">
+            {/* Toast Container Flotante Responsive */}
+            <div className="fixed bottom-3 inset-x-3 sm:inset-x-auto sm:right-4 sm:bottom-4 z-[9999] flex flex-col gap-2 pointer-events-none sm:max-w-sm sm:w-full">
                 {toasts.map((toast) => {
                     const style = getToastStyles(toast.type);
                     return (
                         <div
                             key={toast.id}
-                            className={`pointer-events-auto flex items-start gap-3 p-4 rounded-2xl border backdrop-blur-xl shadow-2xl transition-all duration-300 animate-in slide-in-from-bottom-3 fade-in ${style.border} ${style.bg}`}
+                            className={`pointer-events-auto flex items-start gap-2.5 sm:gap-3 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border backdrop-blur-xl shadow-2xl transition-all duration-300 animate-in slide-in-from-bottom-2 fade-in w-full ${style.border} ${style.bg}`}
                         >
-                            <div className="mt-0.5">{style.icon}</div>
-                            <div className="flex-1 min-w-0">
+                            <div className="mt-0.5 flex-shrink-0">{style.icon}</div>
+                            <div className="flex-1 min-w-0 pr-1">
                                 {toast.title && (
-                                    <h4 className={`text-xs font-bold ${style.titleColor} mb-0.5`}>
+                                    <h4 className={`text-xs font-bold ${style.titleColor} mb-0.5 leading-snug`}>
                                         {toast.title}
                                     </h4>
                                 )}
-                                <p className="text-xs text-slate-300 font-sans leading-relaxed break-words">
+                                <p className="text-[11px] sm:text-xs text-slate-300 font-sans leading-relaxed break-words">
                                     {toast.message}
                                 </p>
                             </div>
                             <button
+                                type="button"
                                 onClick={() => removeToast(toast.id)}
-                                className="text-slate-500 hover:text-white p-1 transition cursor-pointer"
-                                title="Cerrar"
+                                className="text-slate-400 hover:text-white p-1 rounded-lg transition cursor-pointer flex-shrink-0 -mr-1 -mt-0.5"
+                                title="Cerrar notificación"
+                                aria-label="Cerrar notificación"
                             >
                                 <X className="w-3.5 h-3.5" />
                             </button>

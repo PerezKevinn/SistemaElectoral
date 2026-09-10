@@ -52,13 +52,19 @@ export const loginStaff = async (req: Request, res: Response): Promise<void> => 
             .maybeSingle();
 
         if (error || !funcionario) {
-            res.status(401).json({ success: false, error: 'Credenciales inválidas o funcionario no activo.' });
+            res.status(401).json({ success: false, error: 'Credenciales institucionales incorrectas o no autorizadas.' });
+            return;
+        }
+
+        const rolSolicitado = req.body.rol ? String(req.body.rol).trim().toUpperCase() : null;
+        if (rolSolicitado && funcionario.rol !== rolSolicitado) {
+            res.status(401).json({ success: false, error: 'Credenciales institucionales incorrectas o no autorizadas.' });
             return;
         }
 
         const passwordValida = await bcrypt.compare(password, funcionario.password_hash);
         if (!passwordValida) {
-            res.status(401).json({ success: false, error: 'Credenciales inválidas o funcionario no activo.' });
+            res.status(401).json({ success: false, error: 'Credenciales institucionales incorrectas o no autorizadas.' });
             return;
         }
 

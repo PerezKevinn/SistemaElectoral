@@ -55,7 +55,7 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
             }
 
             if (data.usuario.rol !== rolSeleccionado) {
-                throw new Error(`Este usuario pertenece al rol ${data.usuario.rol}, no a ${rolSeleccionado}.`);
+                throw new Error('Credenciales institucionales incorrectas o no autorizadas para este perfil.');
             }
 
             localStorage.setItem('auth_token', data.token);

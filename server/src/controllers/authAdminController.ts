@@ -23,19 +23,19 @@ export const loginAdmin = async (req: Request, res: Response): Promise<void> => 
             .maybeSingle();
 
         if (error || !funcionario) {
-            res.status(401).json({ success: false, error: 'Funcionario no encontrado o inactivo.' });
+            res.status(401).json({ success: false, error: 'Credenciales institucionales incorrectas o no autorizadas.' });
             return;
         }
 
         if (funcionario.rol !== rolSolicitado) {
-            res.status(403).json({ success: false, error: `El usuario no posee el rol ${rolSolicitado}` });
+            res.status(401).json({ success: false, error: 'Credenciales institucionales incorrectas o no autorizadas.' });
             return;
         }
 
         // Validación de contraseña con bcrypt
         const passwordValida = await bcrypt.compare(password, funcionario.password_hash);
         if (!passwordValida) {
-            res.status(401).json({ success: false, error: 'Credenciales inválidas.' });
+            res.status(401).json({ success: false, error: 'Credenciales institucionales incorrectas o no autorizadas.' });
             return;
         }
 

@@ -274,7 +274,21 @@ export const registrarVotanteIndividual = async (req: AuthRequest, res: Response
         if (existente) {
             res.status(400).json({
                 success: false,
-                error: 'Ya existe un elector registrado con este número de documento en el censo.',
+                error: `Ya existe un elector registrado con el documento ${docLimpio}.`,
+            });
+            return;
+        }
+
+        const { data: existenteCorreo } = await censoDb
+            .from('votantes')
+            .select('id_votante')
+            .eq('correo_institucional', correoLimpio)
+            .maybeSingle();
+
+        if (existenteCorreo) {
+            res.status(400).json({
+                success: false,
+                error: `El correo "${correoLimpio}" ya se encuentra registrado para otro elector en el censo.`,
             });
             return;
         }
@@ -312,6 +326,14 @@ export const registrarVotanteIndividual = async (req: AuthRequest, res: Response
             req,
             { documento: docLimpio, correo: correoLimpio, nombre: nombreCompleto }
         );
+
+        if (!emailResult.success && !emailResult.simulado) {
+            res.status(502).json({
+                success: false,
+                error: `Elector guardado en censo, pero el servidor de correo falló al enviar: ${emailResult.error}`,
+            });
+            return;
+        }
 
         res.json({
             success: true,
@@ -436,6 +458,14 @@ export const reenviarCredencialesVotante = async (req: AuthRequest, res: Respons
             req,
             { documento: votante.documento_identidad, correo: votante.correo_institucional }
         );
+
+        if (!emailResult.success && !emailResult.simulado) {
+            res.status(502).json({
+                success: false,
+                error: `Nueva clave guardada, pero el servidor de correo falló al enviar: ${emailResult.error}`,
+            });
+            return;
+        }
 
         res.json({
             success: true,

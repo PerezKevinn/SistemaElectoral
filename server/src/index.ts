@@ -1,3 +1,4 @@
+import dns from 'dns';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express, { Request, Response, NextFunction } from 'express';
@@ -6,6 +7,11 @@ import authRoutes from './routes/authRoutes';
 import urnaRoutes from './routes/urnaRoutes';
 import censoRoutes from './routes/censoRoutes';
 import { apiGlobalLimiter } from './middleware/security';
+
+// Forzar resolución IPv4 primero para evitar ENETUNREACH en contenedores sin IPv6 (Render / Docker)
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+}
 
 dotenv.config(); // Recargar variables de entorno .env
 

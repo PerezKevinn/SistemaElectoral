@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut, ShieldCheck, Play, BarChart3, Lock, FileText, Activity, Users, Menu, X, User, Link2 } from 'lucide-react';
+import { LogOut, ShieldCheck, Play, BarChart3, Lock, FileText, Activity, Users, Menu, X, User } from 'lucide-react';
 import { LoginRol } from './components/LoginRol';
 import { LoginVotante } from './components/LoginVotante';
 import { CabinaVotacion, type Candidato } from './components/CabinaVotacion';
@@ -13,6 +13,10 @@ import { PanelLogsAuditoria } from './components/PanelLogsAuditoria';
 import { PanelCredenciales } from './components/PanelCredenciales';
 import { VerificadorCadenaHashes } from './components/VerificadorCadenaHashes';
 import { ToastProvider } from './components/Toast';
+
+// TODO: - Visualizar contraseña
+//       - Quitar rol admin
+//       - Quitar "Este usuario pertenece al rol AUDITOR, no a ADMIN." - Vulnerabilidad
 
 interface EleccionInfo {
   id_eleccion: string;
@@ -174,7 +178,7 @@ function AppContent() {
   const adminNavItems = [
     { id: 'APERTURA' as VistaAdmin, label: 'Apertura', icon: Play, desc: 'Configurar jornada y planchas' },
     { id: 'ESCRUTINIO' as VistaAdmin, label: 'Escrutinio', icon: BarChart3, desc: 'Conteo y tendencias en vivo' },
-    { id: 'CADENA' as VistaAdmin, label: 'Cadena SHA-256', icon: Link2, desc: 'Auditoría matemática de inmutabilidad' },
+    //{ id: 'CADENA' as VistaAdmin, label: 'Cadena SHA-256', icon: Link2, desc: 'Auditoría matemática de inmutabilidad' },
     { id: 'CIERRE' as VistaAdmin, label: 'Cierre', icon: Lock, desc: 'Sellado definitivo de la urna' },
     { id: 'ACTA' as VistaAdmin, label: 'Acta Oficial', icon: FileText, desc: 'Generar y descargar acta legal' },
     { id: 'LOGS' as VistaAdmin, label: 'Bitácora', icon: Activity, desc: 'Auditoría y eventos registrados' },
@@ -185,7 +189,7 @@ function AppContent() {
   const auditorNavItems = [
     { id: 'VERIFICADOR' as VistaAuditor, label: 'Verificador', icon: ShieldCheck, desc: 'Validar comprobantes de votantes' },
     { id: 'ESCRUTINIO' as VistaAuditor, label: 'Escrutinio', icon: BarChart3, desc: 'Resultados y participación' },
-    { id: 'CADENA' as VistaAuditor, label: 'Cadena SHA-256', icon: Link2, desc: 'Verificar eslabones y hashes' },
+    //{ id: 'CADENA' as VistaAuditor, label: 'Cadena SHA-256', icon: Link2, desc: 'Verificar eslabones y hashes' },
     { id: 'ACTA' as VistaAuditor, label: 'Acta Oficial', icon: FileText, desc: 'Inspeccionar sellado de acta' },
     { id: 'LOGS' as VistaAuditor, label: 'Bitácora', icon: Activity, desc: 'Trazabilidad de operaciones' },
   ];
@@ -253,11 +257,10 @@ function AppContent() {
                       </span>
                     )}
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                        eleccionActual.estado === 'ABIERTA'
-                          ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
-                          : 'bg-slate-800 text-slate-400 border border-slate-700'
-                      }`}
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${eleccionActual.estado === 'ABIERTA'
+                        ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700'
+                        }`}
                     >
                       {eleccionActual.estado}
                     </span>
@@ -268,7 +271,7 @@ function AppContent() {
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs">
                   <span className="text-slate-400">Rol:</span>
                   <span className={`font-semibold uppercase font-mono ${rolAutenticado === 'VOTANTE' ? 'text-emerald-400' :
-                      rolAutenticado === 'AUDITOR' ? 'text-cyan-400' : 'text-indigo-400'
+                    rolAutenticado === 'AUDITOR' ? 'text-cyan-400' : 'text-indigo-400'
                     }`}>
                     {rolAutenticado}
                   </span>
@@ -316,8 +319,8 @@ function AppContent() {
                         key={item.id}
                         onClick={() => setVistaAdmin(item.id)}
                         className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${isActive
-                            ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md shadow-indigo-950/60 ring-1 ring-indigo-400/30'
-                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80 border border-transparent hover:border-slate-800'
+                          ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md shadow-indigo-950/60 ring-1 ring-indigo-400/30'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80 border border-transparent hover:border-slate-800'
                           }`}
                       >
                         <IconComponent className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-500'}`} />
@@ -339,8 +342,8 @@ function AppContent() {
                         key={item.id}
                         onClick={() => setVistaAuditor(item.id)}
                         className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${isActive
-                            ? 'bg-gradient-to-r from-cyan-600 to-cyan-700 text-white shadow-md shadow-cyan-950/60 ring-1 ring-cyan-400/30'
-                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80 border border-transparent hover:border-slate-800'
+                          ? 'bg-gradient-to-r from-cyan-600 to-cyan-700 text-white shadow-md shadow-cyan-950/60 ring-1 ring-cyan-400/30'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80 border border-transparent hover:border-slate-800'
                           }`}
                       >
                         <IconComponent className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-500'}`} />
@@ -357,8 +360,8 @@ function AppContent() {
                   <button
                     onClick={() => setPasoVotante('LOGIN')}
                     className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${pasoVotante === 'LOGIN' || pasoVotante === 'COMPROBANTE'
-                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/60 ring-1 ring-emerald-400/30'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80 border border-transparent hover:border-slate-800'
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/60 ring-1 ring-emerald-400/30'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80 border border-transparent hover:border-slate-800'
                       }`}
                   >
                     <span>Portal de Voto</span>
@@ -366,8 +369,8 @@ function AppContent() {
                   <button
                     onClick={() => setPasoVotante('VERIFICADOR')}
                     className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${pasoVotante === 'VERIFICADOR'
-                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/60 ring-1 ring-emerald-400/30'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80 border border-transparent hover:border-slate-800'
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/60 ring-1 ring-emerald-400/30'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80 border border-transparent hover:border-slate-800'
                       }`}
                   >
                     <ShieldCheck className="w-4 h-4" />
@@ -430,11 +433,10 @@ function AppContent() {
                   )}
                 </div>
                 <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                    eleccionActual.estado === 'ABIERTA'
-                      ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
-                      : 'bg-slate-800 text-slate-400 border border-slate-700'
-                  }`}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${eleccionActual.estado === 'ABIERTA'
+                    ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
+                    : 'bg-slate-800 text-slate-400 border border-slate-700'
+                    }`}
                 >
                   {eleccionActual.estado}
                 </span>
@@ -459,8 +461,8 @@ function AppContent() {
                         setMenuMobileAbierto(false);
                       }}
                       className={`p-3 rounded-xl border text-left transition flex items-start gap-3 cursor-pointer ${isActive
-                          ? 'bg-indigo-950/60 border-indigo-500/80 ring-1 ring-indigo-500/40'
-                          : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900 hover:border-slate-700'
+                        ? 'bg-indigo-950/60 border-indigo-500/80 ring-1 ring-indigo-500/40'
+                        : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900 hover:border-slate-700'
                         }`}
                     >
                       <div className={`p-2 rounded-lg mt-0.5 ${isActive ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'
@@ -497,8 +499,8 @@ function AppContent() {
                         setMenuMobileAbierto(false);
                       }}
                       className={`p-3 rounded-xl border text-left transition flex items-start gap-3 cursor-pointer ${isActive
-                          ? 'bg-cyan-950/60 border-cyan-500/80 ring-1 ring-cyan-500/40'
-                          : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900 hover:border-slate-700'
+                        ? 'bg-cyan-950/60 border-cyan-500/80 ring-1 ring-cyan-500/40'
+                        : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900 hover:border-slate-700'
                         }`}
                     >
                       <div className={`p-2 rounded-lg mt-0.5 ${isActive ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400'
@@ -529,8 +531,8 @@ function AppContent() {
                     setMenuMobileAbierto(false);
                   }}
                   className={`p-3 rounded-xl border text-left transition flex items-center gap-3 cursor-pointer ${pasoVotante === 'LOGIN' || pasoVotante === 'COMPROBANTE'
-                      ? 'bg-emerald-950/60 border-emerald-500/80'
-                      : 'bg-slate-900/60 border-slate-800'
+                    ? 'bg-emerald-950/60 border-emerald-500/80'
+                    : 'bg-slate-900/60 border-slate-800'
                     }`}
                 >
                   <span className="text-xs font-bold">Portal de Voto</span>
@@ -541,8 +543,8 @@ function AppContent() {
                     setMenuMobileAbierto(false);
                   }}
                   className={`p-3 rounded-xl border text-left transition flex items-center gap-3 cursor-pointer ${pasoVotante === 'VERIFICADOR'
-                      ? 'bg-emerald-950/60 border-emerald-500/80'
-                      : 'bg-slate-900/60 border-slate-800'
+                    ? 'bg-emerald-950/60 border-emerald-500/80'
+                    : 'bg-slate-900/60 border-slate-800'
                     }`}
                 >
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />

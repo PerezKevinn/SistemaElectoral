@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, User, KeyRound, Copy, Check } from 'lucide-react';
+import { ShieldCheck, Lock, User, KeyRound, Copy, Check, Eye, EyeOff } from 'lucide-react';
 
 interface LoginVotanteProps {
     onLoginExitoso: (tokenVotacion: string, eleccionActivaId: string) => void;
@@ -8,6 +8,7 @@ interface LoginVotanteProps {
 export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) => {
     const [documento, setDocumento] = useState('');
     const [password, setPassword] = useState('');
+    const [mostrarPassword, setMostrarPassword] = useState(false);
     const [codigoMfa, setCodigoMfa] = useState('');
 
     const [pasoMfa, setPasoMfa] = useState(false);
@@ -136,15 +137,24 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
                                 Contraseña
                             </label>
                             <div className="relative">
-                                <Lock className="w-5 h-5 text-slate-500 absolute left-3.5 top-3.5" />
+                                <Lock className="w-5 h-5 text-slate-500 absolute left-3.5 top-3.5 pointer-events-none" />
                                 <input
-                                    type="password"
+                                    type={mostrarPassword ? 'text' : 'password'}
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="••••••••••••"
-                                    className="w-full pl-11 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500 transition"
+                                    className="w-full pl-11 pr-11 py-3 bg-slate-950 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500 transition font-mono"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setMostrarPassword(!mostrarPassword)}
+                                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition focus:outline-none cursor-pointer"
+                                    title={mostrarPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                    aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                >
+                                    {mostrarPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
                             </div>
                         </div>
 

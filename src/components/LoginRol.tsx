@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Lock, UserCheck, KeyRound, User, AlertCircle, ShieldCheck, CheckCircle2, ChevronRight, Fingerprint, LockKeyhole } from 'lucide-react';
+import { Shield, Lock, UserCheck, KeyRound, User, AlertCircle, ShieldCheck, CheckCircle2, ChevronRight, Fingerprint, LockKeyhole, Eye, EyeOff } from 'lucide-react';
 
 type Rol = 'VOTANTE' | 'AUDITOR' | 'ADMIN';
 
@@ -18,6 +18,7 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
     const [rolSeleccionado, setRolSeleccionado] = useState<Rol>('VOTANTE');
     const [documento, setDocumento] = useState('');
     const [clave, setClave] = useState('');
+    const [mostrarClave, setMostrarClave] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -235,13 +236,22 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
                                         <KeyRound className="w-4 h-4" />
                                     </div>
                                     <input
-                                        type="password"
+                                        type={mostrarClave ? 'text' : 'password'}
                                         value={clave}
                                         onChange={(e) => setClave(e.target.value)}
                                         placeholder="••••••••••••"
-                                        className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-lg text-white font-mono text-xs sm:text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-inner"
+                                        className="w-full pl-10 pr-10 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-lg text-white font-mono text-xs sm:text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-inner"
                                         required
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setMostrarClave(!mostrarClave)}
+                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200 transition focus:outline-none cursor-pointer"
+                                        title={mostrarClave ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                        aria-label={mostrarClave ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                    >
+                                        {mostrarClave ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
                                 </div>
                             </div>
                         </div>

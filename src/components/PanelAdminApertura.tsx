@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PlusCircle, Play, CheckCircle2, AlertCircle, ArrowLeft, Trash2 } from 'lucide-react';
+import { PlusCircle, Play, CheckCircle2, AlertCircle, ArrowLeft, Trash2, Eye, EyeOff } from 'lucide-react';
 
 interface CandidatoForm {
     numeroLista: number;
@@ -15,6 +15,7 @@ export const PanelAdminApertura: React.FC<PanelAdminAperturaProps> = ({ onElecci
     const [titulo, setTitulo] = useState('');
     const [descripcion, setDescripcion] = useState('');
     const [adminClave, setAdminClave] = useState('');
+    const [mostrarClave, setMostrarClave] = useState(false);
     const [candidatos, setCandidatos] = useState<CandidatoForm[]>([
         { numeroLista: 1, nombre: '' },
         { numeroLista: 99, nombre: 'Voto en Blanco' },
@@ -204,14 +205,25 @@ export const PanelAdminApertura: React.FC<PanelAdminAperturaProps> = ({ onElecci
                     {/* Clave Admin */}
                     <div className="pt-3 border-t border-slate-800/80">
                         <label className="block font-semibold text-slate-300 mb-1.5">Clave de Custodia Administrativa</label>
-                        <input
-                            type="password"
-                            value={adminClave}
-                            onChange={(e) => setAdminClave(e.target.value)}
-                            placeholder="ADMIN_SECRET_2026"
-                            className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-200 font-mono outline-none text-xs sm:text-sm"
-                            required
-                        />
+                        <div className="relative">
+                            <input
+                                type={mostrarClave ? 'text' : 'password'}
+                                value={adminClave}
+                                onChange={(e) => setAdminClave(e.target.value)}
+                                placeholder="ADMIN_SECRET_2026"
+                                className="w-full pl-3.5 pr-10 py-2.5 bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-200 font-mono outline-none text-xs sm:text-sm"
+                                required
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setMostrarClave(!mostrarClave)}
+                                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition focus:outline-none cursor-pointer"
+                                title={mostrarClave ? 'Ocultar clave' : 'Ver clave'}
+                                aria-label={mostrarClave ? 'Ocultar clave' : 'Ver clave'}
+                            >
+                                {mostrarClave ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                        </div>
                     </div>
 
                     {errorMsg && (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserPlus, KeyRound, CheckCircle2, XCircle, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
+import { Users, UserPlus, KeyRound, CheckCircle2, XCircle, ArrowLeft, RefreshCw, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useToast } from './Toast';
 
 interface StaffUser {
@@ -22,8 +22,10 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
     const [personal, setPersonal] = useState<StaffUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [mostrarModalCrear, setMostrarModalCrear] = useState(false);
+    const [mostrarPasswordCrear, setMostrarPasswordCrear] = useState(false);
     const [modalPasswordId, setModalPasswordId] = useState<string | null>(null);
     const [nuevaPassword, setNuevaPassword] = useState('');
+    const [mostrarPasswordReset, setMostrarPasswordReset] = useState(false);
 
     // Formulario nuevo usuario
     const [form, setForm] = useState({
@@ -117,6 +119,7 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
             setExitoMsg('Funcionario registrado exitosamente.');
             setForm({ documento: '', nombres: '', apellidos: '', cargo: '', rol: 'AUDITOR', password: '' });
             setMostrarModalCrear(false);
+            setMostrarPasswordCrear(false);
             cargarStaff();
         } catch (err: any) {
             setErrorMsg(err.message);
@@ -166,6 +169,7 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
             toast.success('Contraseña actualizada con éxito y cifrado robusto.', 'Clave Actualizada');
             setModalPasswordId(null);
             setNuevaPassword('');
+            setMostrarPasswordReset(false);
             cargarStaff();
         } catch (err: any) {
             toast.error(err.message, 'Error al Actualizar Contraseña');
@@ -418,20 +422,31 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
 
                             <div>
                                 <label className="block text-slate-300 font-semibold mb-1">Contraseña Inicial</label>
-                                <input
-                                    type="password"
-                                    value={form.password}
-                                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-lg text-white font-mono outline-none"
-                                    placeholder="Mínimo 6 caracteres"
-                                    required
-                                />
+                                <div className="relative">
+                                    <input
+                                        type={mostrarPasswordCrear ? 'text' : 'password'}
+                                        value={form.password}
+                                        onChange={(e) => setForm({ ...form, password: e.target.value })}
+                                        className="w-full pl-3 pr-10 py-2 bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-lg text-white font-mono outline-none text-xs sm:text-sm"
+                                        placeholder="Mínimo 6 caracteres"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setMostrarPasswordCrear(!mostrarPasswordCrear)}
+                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200 transition focus:outline-none cursor-pointer"
+                                        title={mostrarPasswordCrear ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                        aria-label={mostrarPasswordCrear ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                    >
+                                        {mostrarPasswordCrear ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
                                 <button
                                     type="button"
-                                    onClick={() => setMostrarModalCrear(false)}
+                                    onClick={() => { setMostrarModalCrear(false); setMostrarPasswordCrear(false); }}
                                     className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl cursor-pointer transition text-xs font-semibold"
                                 >
                                     Cancelar
@@ -455,7 +470,7 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
                         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                             <h3 className="text-sm font-bold text-white">Cambiar Contraseña de Funcionario</h3>
                             <button
-                                onClick={() => { setModalPasswordId(null); setNuevaPassword(''); }}
+                                onClick={() => { setModalPasswordId(null); setNuevaPassword(''); setMostrarPasswordReset(false); }}
                                 className="text-slate-400 hover:text-white transition"
                             >
                                 ✕
@@ -464,19 +479,30 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
                         <form onSubmit={handleCambiarPassword} className="space-y-3.5 text-xs">
                             <div>
                                 <label className="block text-slate-300 font-semibold mb-1">Nueva Contraseña</label>
-                                <input
-                                    type="password"
-                                    value={nuevaPassword}
-                                    onChange={(e) => setNuevaPassword(e.target.value)}
-                                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-lg text-white font-mono outline-none"
-                                    placeholder="••••••••••••"
-                                    required
-                                />
+                                <div className="relative">
+                                    <input
+                                        type={mostrarPasswordReset ? 'text' : 'password'}
+                                        value={nuevaPassword}
+                                        onChange={(e) => setNuevaPassword(e.target.value)}
+                                        className="w-full pl-3 pr-10 py-2 bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-lg text-white font-mono outline-none text-xs sm:text-sm"
+                                        placeholder="••••••••••••"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setMostrarPasswordReset(!mostrarPasswordReset)}
+                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200 transition focus:outline-none cursor-pointer"
+                                        title={mostrarPasswordReset ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                        aria-label={mostrarPasswordReset ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                    >
+                                        {mostrarPasswordReset ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
                             </div>
                             <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
                                 <button
                                     type="button"
-                                    onClick={() => { setModalPasswordId(null); setNuevaPassword(''); }}
+                                    onClick={() => { setModalPasswordId(null); setNuevaPassword(''); setMostrarPasswordReset(false); }}
                                     className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl cursor-pointer transition text-xs font-semibold"
                                 >
                                     Cancelar

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, ShieldAlert, CheckCircle2, AlertCircle, ArrowLeft, KeySquare } from 'lucide-react';
+import { Lock, ShieldAlert, CheckCircle2, AlertCircle, ArrowLeft, KeySquare, Eye, EyeOff } from 'lucide-react';
 import { useToast } from './Toast';
 
 interface CierreResult {
@@ -22,6 +22,7 @@ export const PanelAdminCierre: React.FC<PanelAdminCierreProps> = ({
 }) => {
     const toast = useToast();
     const [clave, setClave] = useState('');
+    const [mostrarClave, setMostrarClave] = useState(false);
     const [loading, setLoading] = useState(false);
     const [resultado, setResultado] = useState<CierreResult | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -100,15 +101,24 @@ export const PanelAdminCierre: React.FC<PanelAdminCierreProps> = ({
                             Clave de Custodia de la Autoridad Electoral
                         </label>
                         <div className="relative">
+                            <KeySquare className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5 pointer-events-none" />
                             <input
-                                type="password"
+                                type={mostrarClave ? 'text' : 'password'}
                                 value={clave}
                                 onChange={(e) => setClave(e.target.value)}
                                 placeholder="Ingresa la clave secreta de administración"
-                                className="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-800 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl text-xs sm:text-sm text-slate-200 placeholder-slate-600 outline-none transition font-mono"
+                                className="w-full pl-10 pr-10 py-3 bg-slate-950/80 border border-slate-800 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl text-xs sm:text-sm text-slate-200 placeholder-slate-600 outline-none transition font-mono"
                                 required
                             />
-                            <KeySquare className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                            <button
+                                type="button"
+                                onClick={() => setMostrarClave(!mostrarClave)}
+                                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition focus:outline-none cursor-pointer"
+                                title={mostrarClave ? 'Ocultar clave' : 'Ver clave'}
+                                aria-label={mostrarClave ? 'Ocultar clave' : 'Ver clave'}
+                            >
+                                {mostrarClave ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
                         </div>
                         <span className="text-[11px] text-slate-500 mt-1.5 block">Clave de demostración autorizada: <code className="text-slate-400 font-mono">ADMIN_SECRET_2026</code></span>
                     </div>

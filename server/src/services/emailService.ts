@@ -17,32 +17,17 @@ export interface EmailSendResult {
 }
 
 // Configuración del transportador SMTP
+// Configuración del transportador SMTP
 const crearTransporter = () => {
-    const host = process.env.SMTP_HOST;
-    const port = Number(process.env.SMTP_PORT) || 465;
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
+    const host = process.env.SMTP_HOST || (user?.includes('@gmail.com') ? 'smtp.gmail.com' : undefined);
+    const port = Number(process.env.SMTP_PORT) || 465;
     const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
-    if (!user || !pass) {
+    if (!user || !pass || !host) {
         return null;
     }
-
-    // Si es Gmail o smtp.gmail.com, usar el preset nativo de nodemailer con SSL directo (evita bloqueo de puertos en Render)
-    if (host === 'smtp.gmail.com' || (!host && user.includes('@gmail.com'))) {
-        return nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user,
-                pass,
-            },
-            connectionTimeout: 10000,
-            greetingTimeout: 5000,
-            socketTimeout: 10000,
-        });
-    }
-
-    if (!host) return null;
 
     return nodemailer.createTransport({
         host,
@@ -52,13 +37,14 @@ const crearTransporter = () => {
             user,
             pass,
         },
+        family: 4, // Forzar IPv4 para evitar ENETUNREACH en Render / Docker
         connectionTimeout: 10000,
         greetingTimeout: 5000,
-        socketTimeout: 10000,
+        socketTimeout: 15000,
         tls: {
-            rejectUnauthorized: process.env.NODE_ENV === 'production',
+            rejectUnauthorized: false,
         },
-    });
+    } as any);
 };
 
 /**

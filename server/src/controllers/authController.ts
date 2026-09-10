@@ -40,7 +40,7 @@ export const loginPaso1 = async (req: Request, res: Response): Promise<void> => 
         // 1. Buscar votante en el censo oficial
         const { data: votante, error } = await censoDb
             .from('votantes')
-            .select('id_votante, documento_identidad, correo_institucional, password_hash, mfa_secret, esta_habilitado, ha_solicitado_token')
+            .select('id_votante, documento_identidad, nombres, apellidos, correo_institucional, password_hash, mfa_secret, is_mfa_enabled, esta_habilitado, ha_solicitado_token')
             .eq('documento_identidad', docLimpio)
             .maybeSingle();
 
@@ -67,7 +67,29 @@ export const loginPaso1 = async (req: Request, res: Response): Promise<void> => 
             return;
         }
 
-        // 4. Asegurar que exista un secreto MFA
+        // 4. Si el votante tiene contraseña temporal (no ha completado configuración inicial), exigir cambio obligatorio
+        if (!votante.is_mfa_enabled) {
+            const resetPasswordToken = jwt.sign(
+                {
+                    votanteId: votante.id_votante,
+                    doc: votante.documento_identidad,
+                    type: 'FORCE_PASSWORD_CHANGE',
+                    nonce: crypto.randomBytes(16).toString('hex'),
+                },
+                getJwtSecret(),
+                { expiresIn: '15m', algorithm: 'HS256' }
+            );
+
+            res.json({
+                success: true,
+                requiereCambioPassword: true,
+                resetPasswordToken,
+                nombreVotante: `${votante.nombres || ''} ${votante.apellidos || ''}`.trim() || 'Votante',
+            });
+            return;
+        }
+
+        // 5. Asegurar que exista un secreto MFA
         let secretMFA = votante.mfa_secret;
         if (!secretMFA) {
             secretMFA = authenticator.generateSecret();
@@ -77,7 +99,7 @@ export const loginPaso1 = async (req: Request, res: Response): Promise<void> => 
                 .eq('id_votante', votante.id_votante);
         }
 
-        // 5. Generar token temporal de desafío (JWT firmado con HS256)
+        // 6. Generar token temporal de desafío (JWT firmado con HS256)
         const challengeToken = jwt.sign(
             {
                 votanteId: votante.id_votante,
@@ -89,7 +111,7 @@ export const loginPaso1 = async (req: Request, res: Response): Promise<void> => 
             { expiresIn: '5m', algorithm: 'HS256' }
         );
 
-        // 6. Generar código QR en Base64 para la app autenticadora
+        // 7. Generar código QR en Base64 para la app autenticadora
         const accountLabel = votante.correo_institucional || docLimpio;
         const otpAuthUri = `otpauth://totp/EleccionesSindicales:${accountLabel}?secret=${secretMFA}&issuer=EleccionesSindicales`;
         const qrCodeUrl = await QRCode.toDataURL(otpAuthUri);
@@ -105,6 +127,111 @@ export const loginPaso1 = async (req: Request, res: Response): Promise<void> => 
         res.status(error.message?.includes('formato') ? 400 : 500).json({
             success: false,
             error: error.message?.includes('formato') ? error.message : 'Error en la verificación de credenciales.',
+        });
+    }
+};
+
+/**
+ * 1.5. Establecer contraseña definitiva en primer login (Obligatorio para contraseñas temporales)
+ */
+export const cambiarPasswordInicial = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { resetPasswordToken, nuevaPassword, confirmarPassword } = req.body;
+
+        if (!resetPasswordToken || !nuevaPassword) {
+            res.status(400).json({ success: false, error: 'Token de seguridad y nueva contraseña requeridos.' });
+            return;
+        }
+
+        if (confirmarPassword && nuevaPassword !== confirmarPassword) {
+            res.status(400).json({ success: false, error: 'Las contraseñas ingresadas no coinciden.' });
+            return;
+        }
+
+        const passLimpia = validarPasswordFuerte(nuevaPassword);
+
+        // 1. Verificar token firmado
+        let decoded: any;
+        try {
+            decoded = jwt.verify(resetPasswordToken, getJwtSecret(), { algorithms: ['HS256'] });
+        } catch {
+            res.status(401).json({ success: false, error: 'El tiempo para actualizar la contraseña ha expirado. Inicia sesión nuevamente.' });
+            return;
+        }
+
+        if (decoded.type !== 'FORCE_PASSWORD_CHANGE' || !decoded.votanteId) {
+            res.status(403).json({ success: false, error: 'Token de cambio de contraseña inválido.' });
+            return;
+        }
+
+        // 2. Buscar votante
+        const { data: votante, error } = await censoDb
+            .from('votantes')
+            .select('id_votante, documento_identidad, correo_institucional, password_hash, esta_habilitado, ha_solicitado_token')
+            .eq('id_votante', decoded.votanteId)
+            .maybeSingle();
+
+        if (error || !votante) {
+            res.status(404).json({ success: false, error: 'Votante no encontrado en el censo.' });
+            return;
+        }
+
+        if (!votante.esta_habilitado) {
+            res.status(403).json({ success: false, error: 'El elector no se encuentra habilitado.' });
+            return;
+        }
+
+        if (votante.ha_solicitado_token) {
+            res.status(403).json({ success: false, error: 'Tu derecho al voto ya ha sido ejercido previamente.' });
+            return;
+        }
+
+        // 3. Hashear nueva contraseña personal con bcrypt
+        const password_hash = await bcrypt.hash(passLimpia, 10);
+
+        // 4. Generar secreto MFA para el elector
+        const secretMFA = authenticator.generateSecret();
+
+        // 5. Actualizar en BD (marcando is_mfa_enabled = true)
+        const { error: updateErr } = await censoDb
+            .from('votantes')
+            .update({
+                password_hash,
+                mfa_secret: secretMFA,
+                is_mfa_enabled: true,
+            })
+            .eq('id_votante', votante.id_votante);
+
+        if (updateErr) throw updateErr;
+
+        // 6. Generar token de desafío MFA para el siguiente paso
+        const challengeToken = jwt.sign(
+            {
+                votanteId: votante.id_votante,
+                doc: votante.documento_identidad,
+                type: 'MFA_CHALLENGE',
+                nonce: crypto.randomBytes(16).toString('hex'),
+            },
+            getJwtSecret(),
+            { expiresIn: '5m', algorithm: 'HS256' }
+        );
+
+        const accountLabel = votante.correo_institucional || votante.documento_identidad;
+        const otpAuthUri = `otpauth://totp/EleccionesSindicales:${accountLabel}?secret=${secretMFA}&issuer=EleccionesSindicales`;
+        const qrCodeUrl = await QRCode.toDataURL(otpAuthUri);
+
+        res.json({
+            success: true,
+            mensaje: 'Contraseña personal configurada con éxito.',
+            challengeToken,
+            qrCode: qrCodeUrl,
+            manualKey: secretMFA,
+        });
+    } catch (err: any) {
+        console.error('Error en cambiarPasswordInicial:', err.message);
+        res.status(err.message?.includes('formato') || err.message?.includes('caracteres') ? 400 : 500).json({
+            success: false,
+            error: err.message || 'Error al actualizar la contraseña.',
         });
     }
 };

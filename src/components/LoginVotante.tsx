@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, User, KeyRound, Copy, Check, Eye, EyeOff } from 'lucide-react';
+import { ShieldCheck, Lock, User, KeyRound, Copy, Check, Eye, EyeOff, Key } from 'lucide-react';
 
 interface LoginVotanteProps {
     onLoginExitoso: (tokenVotacion: string, eleccionActivaId: string) => void;
@@ -10,6 +10,15 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
     const [password, setPassword] = useState('');
     const [mostrarPassword, setMostrarPassword] = useState(false);
     const [codigoMfa, setCodigoMfa] = useState('');
+
+    // Estados de cambio obligatorio de contraseña temporal
+    const [pasoCambioPassword, setPasoCambioPassword] = useState(false);
+    const [resetPasswordToken, setResetPasswordToken] = useState<string | null>(null);
+    const [nombreVotante, setNombreVotante] = useState('');
+    const [nuevaPassword, setNuevaPassword] = useState('');
+    const [confirmarPassword, setConfirmarPassword] = useState('');
+    const [mostrarNuevaPassword, setMostrarNuevaPassword] = useState(false);
+    const [mostrarConfirmarPassword, setMostrarConfirmarPassword] = useState(false);
 
     const [pasoMfa, setPasoMfa] = useState(false);
     const [challengeToken, setChallengeToken] = useState<string | null>(null);
@@ -43,9 +52,66 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
                 throw new Error(data.error || 'Credenciales inválidas o elector inhabilitado');
             }
 
+            // Si el elector tiene contraseña temporal, obligar a cambiarla antes de MFA
+            if (data.requiereCambioPassword) {
+                setResetPasswordToken(data.resetPasswordToken);
+                setNombreVotante(data.nombreVotante || '');
+                setPasoCambioPassword(true);
+                return;
+            }
+
             setChallengeToken(data.challengeToken);
             setQrCodeData(data.qrCode || null);
             setManualKey(data.manualKey || null);
+            setPasoMfa(true);
+        } catch (err: any) {
+            setErrorMsg(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCambiarPasswordInicial = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setErrorMsg(null);
+
+        if (nuevaPassword.length < 6) {
+            setErrorMsg('La nueva contraseña debe tener al menos 6 caracteres.');
+            return;
+        }
+
+        if (nuevaPassword !== confirmarPassword) {
+            setErrorMsg('Las contraseñas no coinciden. Por favor verifícalas.');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const res = await fetch('/api/auth/cambiar-password-inicial', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    resetPasswordToken,
+                    nuevaPassword: nuevaPassword.trim(),
+                    confirmarPassword: confirmarPassword.trim(),
+                }),
+            });
+
+            let data: any = {};
+            try {
+                data = await res.json();
+            } catch {
+                throw new Error('Error al conectar con el servidor.');
+            }
+
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Error al actualizar la contraseña.');
+            }
+
+            setChallengeToken(data.challengeToken);
+            setQrCodeData(data.qrCode || null);
+            setManualKey(data.manualKey || null);
+            setPasoCambioPassword(false);
             setPasoMfa(true);
         } catch (err: any) {
             setErrorMsg(err.message);
@@ -113,7 +179,101 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
                     </div>
                 )}
 
-                {!pasoMfa ? (
+                {pasoCambioPassword ? (
+                    <form onSubmit={handleCambiarPasswordInicial} className="space-y-4">
+                        <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-3 text-left">
+                            <div className="p-1.5 bg-amber-500/20 text-amber-400 rounded-lg shrink-0 mt-0.5">
+                                <Key className="w-4 h-4" />
+                            </div>
+                            <div>
+                                <h2 className="text-xs font-bold text-amber-300 uppercase tracking-wide">
+                                    Actualización de Seguridad
+                                </h2>
+                                <p className="text-[11px] text-amber-200/80 mt-0.5 leading-relaxed">
+                                    {nombreVotante ? `Hola, ${nombreVotante}. ` : ''}
+                                    Has ingresado con una clave temporal. Por tu seguridad y privacidad de voto, debes establecer una contraseña personal definitiva.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                                Nueva Contraseña Personal
+                            </label>
+                            <div className="relative">
+                                <Lock className="w-5 h-5 text-slate-500 absolute left-3.5 top-3.5 pointer-events-none" />
+                                <input
+                                    type={mostrarNuevaPassword ? 'text' : 'password'}
+                                    required
+                                    minLength={6}
+                                    value={nuevaPassword}
+                                    onChange={(e) => setNuevaPassword(e.target.value)}
+                                    placeholder="Mínimo 6 caracteres"
+                                    className="w-full pl-11 pr-11 py-3 bg-slate-950 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500 transition font-mono"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setMostrarNuevaPassword(!mostrarNuevaPassword)}
+                                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition focus:outline-none cursor-pointer"
+                                    title={mostrarNuevaPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                    aria-label={mostrarNuevaPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                >
+                                    {mostrarNuevaPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                                Confirmar Nueva Contraseña
+                            </label>
+                            <div className="relative">
+                                <Lock className="w-5 h-5 text-slate-500 absolute left-3.5 top-3.5 pointer-events-none" />
+                                <input
+                                    type={mostrarConfirmarPassword ? 'text' : 'password'}
+                                    required
+                                    minLength={6}
+                                    value={confirmarPassword}
+                                    onChange={(e) => setConfirmarPassword(e.target.value)}
+                                    placeholder="Repite tu nueva contraseña"
+                                    className="w-full pl-11 pr-11 py-3 bg-slate-950 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500 transition font-mono"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setMostrarConfirmarPassword(!mostrarConfirmarPassword)}
+                                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition focus:outline-none cursor-pointer"
+                                    title={mostrarConfirmarPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                    aria-label={mostrarConfirmarPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                >
+                                    {mostrarConfirmarPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setPasoCambioPassword(false);
+                                    setResetPasswordToken(null);
+                                    setNuevaPassword('');
+                                    setConfirmarPassword('');
+                                }}
+                                disabled={loading}
+                                className="w-1/3 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg text-xs transition cursor-pointer"
+                            >
+                                ← Cancelar
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={loading || !nuevaPassword || !confirmarPassword}
+                                className="w-2/3 py-3 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-800 text-white font-semibold rounded-lg text-xs transition shadow-lg shadow-amber-900/20 cursor-pointer disabled:cursor-not-allowed"
+                            >
+                                {loading ? 'Actualizando...' : 'Guardar y Continuar →'}
+                            </button>
+                        </div>
+                    </form>
+                ) : !pasoMfa ? (
                     <form onSubmit={handleValidarCredenciales} className="space-y-5">
                         <div>
                             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { loginPaso1, loginPaso2Mfa, verificarVotante, obtenerSetupMfa } from '../controllers/authController';
+import { loginPaso1, cambiarPasswordInicial, loginPaso2Mfa, verificarVotante, obtenerSetupMfa } from '../controllers/authController';
 import { censoDb } from '../config/supabase';
 import { authLimiter, totpLimiter } from '../middleware/security';
 
@@ -8,6 +8,7 @@ const router = Router();
 
 // Rutas de autenticación protegidas con Rate Limiting anti-fuerza bruta
 router.post('/login-paso1', authLimiter, loginPaso1);
+router.post('/cambiar-password-inicial', authLimiter, cambiarPasswordInicial);
 router.post('/login-paso2', totpLimiter, loginPaso2Mfa);
 router.post('/login-paso2-mfa', totpLimiter, loginPaso2Mfa);
 router.get('/verificar/:documento', verificarVotante);

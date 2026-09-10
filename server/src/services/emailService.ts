@@ -19,14 +19,30 @@ export interface EmailSendResult {
 // Configuración del transportador SMTP
 const crearTransporter = () => {
     const host = process.env.SMTP_HOST;
-    const port = Number(process.env.SMTP_PORT) || 587;
+    const port = Number(process.env.SMTP_PORT) || 465;
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
     const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
-    if (!host || !user || !pass) {
+    if (!user || !pass) {
         return null;
     }
+
+    // Si es Gmail o smtp.gmail.com, usar el preset nativo de nodemailer con SSL directo (evita bloqueo de puertos en Render)
+    if (host === 'smtp.gmail.com' || (!host && user.includes('@gmail.com'))) {
+        return nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user,
+                pass,
+            },
+            connectionTimeout: 10000,
+            greetingTimeout: 5000,
+            socketTimeout: 10000,
+        });
+    }
+
+    if (!host) return null;
 
     return nodemailer.createTransport({
         host,
@@ -36,6 +52,9 @@ const crearTransporter = () => {
             user,
             pass,
         },
+        connectionTimeout: 10000,
+        greetingTimeout: 5000,
+        socketTimeout: 10000,
         tls: {
             rejectUnauthorized: process.env.NODE_ENV === 'production',
         },
@@ -187,11 +206,11 @@ export const verificarEstadoSmtp = async (): Promise<{
     mensaje: string;
     error?: string;
 }> => {
-    const host = process.env.SMTP_HOST;
+    const host = process.env.SMTP_HOST || (process.env.SMTP_USER?.includes('@gmail.com') ? 'smtp.gmail.com' : undefined);
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
 
-    if (!host || !user || !pass) {
+    if (!user || !pass) {
         return {
             configurado: false,
             modo: 'SIMULACION',

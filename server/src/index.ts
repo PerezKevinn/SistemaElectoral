@@ -12,6 +12,9 @@ dotenv.config(); // Recargar variables de entorno .env
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// Habilitar trust proxy para despliegues detrás de reverse proxies (Vercel / Render / Cloudflare)
+app.set('trust proxy', 1);
+
 // 1. Cabeceras HTTP de Seguridad con Helmet
 app.use(
     helmet({

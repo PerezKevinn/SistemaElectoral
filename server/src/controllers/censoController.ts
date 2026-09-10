@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { censoDb, urnaDb } from '../config/supabase';
 import { AuthRequest } from '../middleware/authRole';
 import { validarDocumento } from '../middleware/security';
-import { enviarCredencialesVotante, VotanteEmailData } from '../services/emailService';
+import { enviarCredencialesVotante, verificarEstadoSmtp, VotanteEmailData } from '../services/emailService';
 
 /**
  * Genera una contraseña aleatoria de alta entropía (10 caracteres)
@@ -490,5 +490,17 @@ export const cambiarEstadoHabilitacion = async (req: AuthRequest, res: Response)
             success: false,
             error: err.message || 'Error al cambiar estado de habilitación.',
         });
+    }
+};
+
+/**
+ * 6. Consultar estado y conectividad del servidor SMTP
+ */
+export const obtenerEstadoSmtp = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const estado = await verificarEstadoSmtp();
+        res.json({ success: true, estado });
+    } catch (err: any) {
+        res.status(500).json({ success: false, error: err.message || 'Error al consultar estado SMTP' });
     }
 };

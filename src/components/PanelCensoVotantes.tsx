@@ -17,6 +17,7 @@ import {
     Send,
     Check,
     Sparkles,
+    AlertTriangle,
 } from 'lucide-react';
 import { useToast } from './Toast';
 
@@ -84,6 +85,16 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
     const [guardandoIndividual, setGuardandoIndividual] = useState(false);
     const [accionandoId, setAccionandoId] = useState<string | null>(null);
 
+    // Estado de Conexión SMTP
+    const [estadoSmtp, setEstadoSmtp] = useState<{
+        configurado: boolean;
+        modo: 'REAL' | 'SIMULACION';
+        host?: string;
+        remitente?: string;
+        mensaje: string;
+    } | null>(null);
+    const [verificandoSmtp, setVerificandoSmtp] = useState(false);
+
     const getAuthHeaders = () => {
         const token = localStorage.getItem('auth_token') || sessionStorage.getItem('staff_token');
         return {
@@ -91,6 +102,25 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
             'Authorization': `Bearer ${token}`,
         };
     };
+
+    const consultarEstadoSmtp = async () => {
+        setVerificandoSmtp(true);
+        try {
+            const res = await fetch('/api/censo/estado-smtp', { headers: getAuthHeaders() });
+            const data = await res.json();
+            if (data.success && data.estado) {
+                setEstadoSmtp(data.estado);
+            }
+        } catch {
+            // Ignorar
+        } finally {
+            setVerificandoSmtp(false);
+        }
+    };
+
+    useEffect(() => {
+        consultarEstadoSmtp();
+    }, []);
 
     // 1. Descargar Plantilla Oficial (.xlsx / .csv)
     const descargarPlantilla = (formato: 'xlsx' | 'csv') => {
@@ -242,10 +272,17 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
             }
 
             setResultadoCarga(data.resumen);
-            toast.success(
-                `Se registraron ${data.resumen.exitosos} electores y se despacharon sus contraseñas por correo.`,
-                'Censo Oficial Actualizado'
-            );
+            if (data.resumen.correosSimulados > 0 && data.resumen.correosEnviados === 0) {
+                toast.warning(
+                    `Se procesaron ${data.resumen.exitosos} electores en BD (Modo Simulación: revisa server/.env para envíos reales).`,
+                    'Censo Actualizado (Simulación)'
+                );
+            } else {
+                toast.success(
+                    `Se registraron ${data.resumen.exitosos} electores y se despacharon sus contraseñas por correo.`,
+                    'Censo Oficial Actualizado'
+                );
+            }
             setFilasPrevias([]);
             setArchivoNombre(null);
             cargarListaVotantes();
@@ -301,7 +338,11 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
                 throw new Error(data.error || 'Error al reenviar credenciales');
             }
 
-            toast.success(`Nuevas credenciales generadas y enviadas a ${correo}`, 'Credenciales Despachadas');
+            if (data.email?.simulado) {
+                toast.warning(`Clave regenerada en BD para ${correo} (Modo Simulación: revisa server/.env para envíos reales)`, 'Clave Regenerada');
+            } else {
+                toast.success(`Nuevas credenciales generadas y enviadas a ${correo}`, 'Credenciales Despachadas');
+            }
         } catch (err: any) {
             toast.error(err.message, 'Error al Reenviar');
         } finally {
@@ -408,6 +449,49 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
                 </div>
             </div>
 
+            {/* Banner de Estado del Servidor SMTP */}
+            {estadoSmtp && (
+                <div
+                    className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition ${
+                        estadoSmtp.configurado
+                            ? 'bg-emerald-950/30 border-emerald-800/50 text-emerald-300'
+                            : 'bg-amber-950/30 border-amber-800/60 text-amber-200'
+                    }`}
+                >
+                    <div className="flex items-start gap-2.5">
+                        {estadoSmtp.configurado ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                        ) : (
+                            <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                        )}
+                        <div>
+                            <span className="font-bold block">
+                                {estadoSmtp.configurado
+                                    ? `Servidor de Correo Conectado (${estadoSmtp.host})`
+                                    : 'Modo Sandbox / Simulación de Correo Activo'}
+                            </span>
+                            <p className="text-[11px] opacity-90 mt-0.5 leading-relaxed">
+                                {estadoSmtp.mensaje}
+                                {!estadoSmtp.configurado && (
+                                    <span className="block text-amber-300/90 font-medium mt-1">
+                                        💡 Para enviar correos reales a los votantes, añade tus credenciales SMTP (ej. Gmail, Outlook, Brevo) en <code className="bg-amber-950 px-1 py-0.5 rounded border border-amber-800/80 font-mono">server/.env</code>.
+                                    </span>
+                                )}
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={consultarEstadoSmtp}
+                        disabled={verificandoSmtp}
+                        className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 border border-slate-700/80 rounded-lg text-[11px] font-semibold text-slate-300 transition shrink-0 cursor-pointer flex items-center gap-1.5 self-start sm:self-center"
+                        title="Verificar conexión con el servidor SMTP"
+                    >
+                        <RefreshCw className={`w-3 h-3 ${verificandoSmtp ? 'animate-spin' : ''}`} />
+                        <span>{verificandoSmtp ? 'Verificando...' : 'Probar SMTP'}</span>
+                    </button>
+                </div>
+            )}
+
             {/* Selector de Pestañas */}
             <div className="flex border-b border-slate-800/80 gap-2">
                 <button
@@ -512,31 +596,39 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
 
                     {/* Resumen de Última Carga si existe */}
                     {resultadoCarga && (
-                        <div className="p-4 bg-emerald-950/30 border border-emerald-800/60 rounded-xl space-y-2 animate-in fade-in duration-200">
+                        <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-xl space-y-3 animate-in fade-in duration-200">
                             <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                <span>Resumen de Carga Exitosa</span>
+                                <span>Resumen del Proceso de Importación</span>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                                <div className="p-2.5 bg-slate-900/80 rounded-lg border border-slate-800">
+                                <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800">
                                     <span className="text-slate-400 block text-[10px]">Total Procesados</span>
                                     <span className="text-white font-bold font-mono text-sm">{resultadoCarga.totalProcesados}</span>
                                 </div>
-                                <div className="p-2.5 bg-slate-900/80 rounded-lg border border-slate-800">
+                                <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800">
                                     <span className="text-emerald-400 block text-[10px]">Votantes Habilitados</span>
                                     <span className="text-emerald-300 font-bold font-mono text-sm">{resultadoCarga.exitosos}</span>
                                 </div>
-                                <div className="p-2.5 bg-slate-900/80 rounded-lg border border-slate-800">
-                                    <span className="text-indigo-400 block text-[10px]">Correos Despachados</span>
+                                <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800">
+                                    <span className="text-indigo-400 block text-[10px]">Correos Reales Despachados</span>
                                     <span className="text-indigo-300 font-bold font-mono text-sm">
-                                        {resultadoCarga.correosEnviados + resultadoCarga.correosSimulados}
+                                        {resultadoCarga.correosEnviados}
                                     </span>
                                 </div>
-                                <div className="p-2.5 bg-slate-900/80 rounded-lg border border-slate-800">
-                                    <span className="text-rose-400 block text-[10px]">Registros con Error</span>
-                                    <span className="text-rose-300 font-bold font-mono text-sm">{resultadoCarga.fallidos}</span>
+                                <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800">
+                                    <span className="text-amber-400 block text-[10px]">Correos Modo Simulado</span>
+                                    <span className="text-amber-300 font-bold font-mono text-sm">{resultadoCarga.correosSimulados}</span>
                                 </div>
                             </div>
+                            {resultadoCarga.correosSimulados > 0 && (
+                                <div className="p-3 bg-amber-950/40 border border-amber-800/50 rounded-lg text-xs text-amber-300/90 leading-relaxed flex items-start gap-2">
+                                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                                    <div>
+                                        <strong>Atención:</strong> Las credenciales de {resultadoCarga.correosSimulados} votantes se registraron de forma segura en la base de datos, pero se procesaron en <strong>Modo Simulación</strong> porque el servidor SMTP no está configurado en <code className="bg-amber-900/60 px-1 py-0.5 rounded font-mono">server/.env</code>. Para que los correos salgan a las bandejas reales, configura las variables SMTP en el archivo <code>.env</code>.
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

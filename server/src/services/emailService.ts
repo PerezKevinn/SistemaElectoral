@@ -174,3 +174,57 @@ export const enviarCredencialesVotante = async (data: VotanteEmailData): Promise
         };
     }
 };
+
+/**
+ * Diagnóstico del estado del servidor de correos SMTP
+ */
+export const verificarEstadoSmtp = async (): Promise<{
+    configurado: boolean;
+    modo: 'REAL' | 'SIMULACION';
+    host?: string;
+    puerto?: number;
+    remitente?: string;
+    mensaje: string;
+    error?: string;
+}> => {
+    const host = process.env.SMTP_HOST;
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+
+    if (!host || !user || !pass) {
+        return {
+            configurado: false,
+            modo: 'SIMULACION',
+            mensaje: 'Servidor SMTP no configurado en variables de entorno (.env). Los correos se simulan internamente.',
+        };
+    }
+
+    const transporter = crearTransporter();
+    if (!transporter) {
+        return {
+            configurado: false,
+            modo: 'SIMULACION',
+            mensaje: 'No se pudo inicializar la conexión SMTP.',
+        };
+    }
+
+    try {
+        await transporter.verify();
+        return {
+            configurado: true,
+            modo: 'REAL',
+            host,
+            puerto: Number(process.env.SMTP_PORT) || 587,
+            remitente: process.env.SMTP_FROM || user,
+            mensaje: `Conexión SMTP activa con ${host}. Los correos se envían a las bandejas reales.`,
+        };
+    } catch (err: any) {
+        return {
+            configurado: false,
+            modo: 'SIMULACION',
+            host,
+            mensaje: `Fallo al verificar credenciales SMTP (${err.message}).`,
+            error: err.message,
+        };
+    }
+};

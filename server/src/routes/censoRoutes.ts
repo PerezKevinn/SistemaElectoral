@@ -5,6 +5,7 @@ import {
     listarVotantesCenso,
     reenviarCredencialesVotante,
     cambiarEstadoHabilitacion,
+    obtenerEstadoSmtp,
 } from '../controllers/censoController';
 import { requireRol } from '../middleware/authRole';
 
@@ -14,6 +15,7 @@ const router = Router();
 router.post('/cargar-masivo', requireRol(['ADMIN']), cargarCensoMasivo);
 router.post('/crear', requireRol(['ADMIN']), registrarVotanteIndividual);
 router.get('/votantes', requireRol(['ADMIN', 'AUDITOR']), listarVotantesCenso);
+router.get('/estado-smtp', requireRol(['ADMIN', 'AUDITOR']), obtenerEstadoSmtp);
 router.post('/reenviar-credencial', requireRol(['ADMIN']), reenviarCredencialesVotante);
 router.post('/estado', requireRol(['ADMIN']), cambiarEstadoHabilitacion);
 

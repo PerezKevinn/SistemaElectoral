@@ -7,7 +7,7 @@ import urnaRoutes from './routes/urnaRoutes';
 import censoRoutes from './routes/censoRoutes';
 import { apiGlobalLimiter } from './middleware/security';
 
-dotenv.config();
+dotenv.config(); // Recargar variables de entorno .env
 
 const app = express();
 const PORT = process.env.PORT || 4000;

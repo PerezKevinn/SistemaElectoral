@@ -17,7 +17,6 @@ export interface EmailSendResult {
 }
 
 // Configuración del transportador SMTP
-// Configuración del transportador SMTP
 const crearTransporter = () => {
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
@@ -51,8 +50,7 @@ const crearTransporter = () => {
  * Genera la plantilla HTML institucional para el correo del votante
  */
 const generarPlantillaHTML = (data: VotanteEmailData): string => {
-    const appUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-    const subdirectivaTexto = data.subdirectiva ? data.subdirectiva : 'Padrón General Nacional';
+    const appUrl = (process.env.CLIENT_URL || process.env.APP_URL || process.env.FRONTEND_URL || 'https://sistema-electoral-eight.vercel.app/').trim();
 
     return `
 <!DOCTYPE html>
@@ -60,80 +58,114 @@ const generarPlantillaHTML = (data: VotanteEmailData): string => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Credenciales de Votación Institucional</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #030712; color: #f8fafc; margin: 0; padding: 20px; }
-    .container { max-width: 580px; margin: 0 auto; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
-    .header { background: linear-gradient(135deg, #1e1b4b, #0f172a); padding: 32px 24px; text-align: center; border-bottom: 1px solid #312e81; }
-    .badge { display: inline-block; padding: 4px 12px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 9999px; font-size: 11px; font-weight: 700; color: #818cf8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
-    .title { font-size: 20px; font-weight: 800; color: #ffffff; margin: 0 0 6px 0; }
-    .subtitle { font-size: 12px; color: #94a3b8; margin: 0; }
-    .content { padding: 28px 24px; line-height: 1.6; }
-    .greeting { font-size: 14px; color: #e2e8f0; margin-bottom: 16px; }
-    .info-card { background: #030712; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin: 20px 0; }
-    .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1e293b; font-size: 13px; }
-    .info-row:last-child { border-bottom: none; }
-    .info-label { color: #94a3b8; font-weight: 500; }
-    .info-value { color: #ffffff; font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-    .pass-box { background: rgba(16, 185, 129, 0.1); border: 1px dashed rgba(16, 185, 129, 0.4); border-radius: 10px; padding: 14px; text-align: center; margin: 20px 0; }
-    .pass-label { font-size: 11px; color: #6ee7b7; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; display: block; margin-bottom: 4px; }
-    .pass-code { font-size: 22px; font-weight: 800; color: #10b981; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; letter-spacing: 0.1em; }
-    .btn-container { text-align: center; margin: 28px 0 20px 0; }
-    .btn { display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #059669, #047857); color: #ffffff !important; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px; box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.4); }
-    .warning { background: rgba(245, 158, 11, 0.08); border-left: 3px solid #f59e0b; padding: 12px 14px; font-size: 12px; color: #fde68a; border-radius: 0 8px 8px 0; margin-top: 24px; }
-    .footer { background: #030712; padding: 20px 24px; text-align: center; font-size: 11px; color: #64748b; border-top: 1px solid #1e293b; }
-  </style>
+  <title>Credenciales de Acceso - Jornada Electoral</title>
 </head>
-<body>
-  <div class="container">
-    <div class="header">
-      <div class="badge">Tribunal Electoral Autónomo</div>
-      <h1 class="title">Credenciales Oficiales de Sufragio</h1>
-      <p class="subtitle">Sistema Autónomo de Votación y Escrutinio Digital</p>
-    </div>
+<body style="margin: 0; padding: 32px 16px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; -webkit-font-smoothing: antialiased;">
+  <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 540px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);">
+    
+    <!-- LÍNEA SUPERIOR DE ACENTO INSTITUCIONAL -->
+    <tr>
+      <td style="height: 5px; background: #0f172a;"></td>
+    </tr>
 
-    <div class="content">
-      <p class="greeting">Estimado(a) <strong>${data.nombreCompleto}</strong>,</p>
-      <p style="font-size: 13px; color: #cbd5e1; margin-bottom: 16px;">
-        Se ha habilitado satisfactoriamente su registro en el censo electoral oficial para la jornada de votación sindical.
-      </p>
-
-      <div class="info-card">
-        <div class="info-row">
-          <span class="info-label">Documento / Cédula:</span>
-          <span class="info-value">${data.documento}</span>
+    <!-- ENCABEZADO INSTITUCIONAL -->
+    <tr>
+      <td style="padding: 32px 32px 24px 32px; border-bottom: 1px solid #f1f5f9;">
+        <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">
+          Jornada Electoral Oficial
         </div>
-        <div class="info-row">
-          <span class="info-label">Subdirectiva / Seccional:</span>
-          <span class="info-value" style="font-family: inherit; font-size: 12px; color: #e0e7ff;">${subdirectivaTexto}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Correo Registrado:</span>
-          <span class="info-value" style="font-family: inherit; font-size: 12px; color: #94a3b8;">${data.correo}</span>
-        </div>
-      </div>
+        <h1 style="margin: 0 0 6px 0; font-size: 20px; font-weight: 700; color: #0f172a; letter-spacing: -0.01em;">
+          Credenciales de Sufragio
+        </h1>
+        <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.4;">
+          Sistema de Votación y Escrutinio Digital
+        </p>
+      </td>
+    </tr>
 
-      <div class="pass-box">
-        <span class="pass-label">Contraseña Temporal de Acceso</span>
-        <span class="pass-code">${data.passwordPlana}</span>
-      </div>
+    <!-- CUERPO DEL MENSAJE -->
+    <tr>
+      <td style="padding: 28px 32px;">
+        <p style="margin: 0 0 12px 0; font-size: 14px; color: #334155; line-height: 1.5;">
+          Estimado(a) <strong>${data.nombreCompleto}</strong>,
+        </p>
+        <p style="margin: 0 0 24px 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+          A continuación se relacionan sus credenciales oficiales para participar en la jornada de votación:
+        </p>
 
-      <div class="btn-container">
-        <a href="${appUrl}" class="btn" target="_blank">Ingresar al Portal de Votación &rarr;</a>
-      </div>
+        <!-- TABLA EN DOS COLUMNAS: 1. TÍTULO | 2. CREDENCIAL -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; border-collapse: separate; border-spacing: 0; overflow: hidden; margin-bottom: 28px;">
+          <thead>
+            <tr style="background-color: #f1f5f9;">
+              <th align="left" style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0; width: 42%;">
+                1. Título
+              </th>
+              <th align="left" style="padding: 10px 16px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0; width: 58%;">
+                2. Credencial
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- FILA: USUARIO -->
+            <tr>
+              <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0; vertical-align: middle;">
+                <span style="font-size: 13px; font-weight: 600; color: #1e293b;">
+                  Usuario
+                </span>
+                <span style="display: block; font-size: 11px; color: #64748b;">
+                  Documento de identidad
+                </span>
+              </td>
+              <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0; vertical-align: middle;">
+                <span style="font-size: 14px; font-weight: 700; color: #0f172a; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">
+                  ${data.documento}
+                </span>
+              </td>
+            </tr>
 
-      <div class="warning">
-        <strong>Medidas de Seguridad y Secreto de Voto:</strong><br>
-        1. Esta clave es personal e intransferible. El personal administrativo nunca tuvo acceso a su contraseña.<br>
-        2. Al ingresar al sistema, se solicitará escanear su código <strong>MFA / 2FA</strong> para emitir su token ciego de sufragio.<br>
-        3. Su voto está blindado matemáticamente y no puede ser asociado a su identidad.
-      </div>
-    </div>
+            <!-- FILA: CONTRASEÑA -->
+            <tr>
+              <td style="padding: 14px 16px; vertical-align: middle;">
+                <span style="font-size: 13px; font-weight: 600; color: #1e293b;">
+                  Contraseña
+                </span>
+                <span style="display: block; font-size: 11px; color: #64748b;">
+                  Clave de acceso
+                </span>
+              </td>
+              <td style="padding: 14px 16px; vertical-align: middle;">
+                <span style="display: inline-block; padding: 4px 10px; background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 15px; font-weight: 700; color: #0f172a; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; letter-spacing: 0.05em;">
+                  ${data.passwordPlana}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-    <div class="footer">
-      Comisión Electoral y de Garantías • Este es un mensaje automático institucional, por favor no responda a este correo.
-    </div>
-  </div>
+        <!-- BOTÓN DE INGRESO -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 20px 0 24px 0;">
+          <tr>
+            <td align="center">
+              <a href="${appUrl}" target="_blank" style="display: inline-block; padding: 12px 32px; background-color: #0f172a; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 13px; letter-spacing: 0.01em;">
+                Ingresar al Portal de Votación &rarr;
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <p style="margin: 0; font-size: 12px; color: #64748b; text-align: center; line-height: 1.4;">
+          Por motivos de seguridad, estas credenciales son personales e intransferibles.
+        </p>
+      </td>
+    </tr>
+
+    <!-- PIE DE PÁGINA -->
+    <tr>
+      <td style="padding: 16px 32px; text-align: center; background-color: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8;">
+        Comisión de Garantías Electorales • Mensaje institucional automático.
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
     `;

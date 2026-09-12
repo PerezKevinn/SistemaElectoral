@@ -85,16 +85,6 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
     const [guardandoIndividual, setGuardandoIndividual] = useState(false);
     const [accionandoId, setAccionandoId] = useState<string | null>(null);
 
-    // Estado de Conexión SMTP
-    const [estadoSmtp, setEstadoSmtp] = useState<{
-        configurado: boolean;
-        modo: 'REAL' | 'SIMULACION';
-        host?: string;
-        remitente?: string;
-        mensaje: string;
-    } | null>(null);
-    const [verificandoSmtp, setVerificandoSmtp] = useState(false);
-
     const getAuthHeaders = () => {
         const token = localStorage.getItem('auth_token') || sessionStorage.getItem('staff_token');
         return {
@@ -102,25 +92,6 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
             'Authorization': `Bearer ${token}`,
         };
     };
-
-    const consultarEstadoSmtp = async () => {
-        setVerificandoSmtp(true);
-        try {
-            const res = await fetch('/api/censo/estado-smtp', { headers: getAuthHeaders() });
-            const data = await res.json();
-            if (data.success && data.estado) {
-                setEstadoSmtp(data.estado);
-            }
-        } catch {
-            // Ignorar
-        } finally {
-            setVerificandoSmtp(false);
-        }
-    };
-
-    useEffect(() => {
-        consultarEstadoSmtp();
-    }, []);
 
     // 1. Descargar Plantilla Oficial (.xlsx / .csv)
     const descargarPlantilla = (formato: 'xlsx' | 'csv') => {
@@ -448,49 +419,6 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
                     </button>
                 </div>
             </div>
-
-            {/* Banner de Estado del Servidor SMTP */}
-            {estadoSmtp && (
-                <div
-                    className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition ${
-                        estadoSmtp.configurado
-                            ? 'bg-emerald-950/30 border-emerald-800/50 text-emerald-300'
-                            : 'bg-amber-950/30 border-amber-800/60 text-amber-200'
-                    }`}
-                >
-                    <div className="flex items-start gap-2.5">
-                        {estadoSmtp.configurado ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-                        ) : (
-                            <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
-                        )}
-                        <div>
-                            <span className="font-bold block">
-                                {estadoSmtp.configurado
-                                    ? `Servidor de Correo Conectado (${estadoSmtp.host})`
-                                    : 'Modo Sandbox / Simulación de Correo Activo'}
-                            </span>
-                            <p className="text-[11px] opacity-90 mt-0.5 leading-relaxed">
-                                {estadoSmtp.mensaje}
-                                {!estadoSmtp.configurado && (
-                                    <span className="block text-amber-300/90 font-medium mt-1">
-                                        💡 Para enviar correos reales a los votantes, añade tus credenciales SMTP (ej. Gmail, Outlook, Brevo) en <code className="bg-amber-950 px-1 py-0.5 rounded border border-amber-800/80 font-mono">server/.env</code>.
-                                    </span>
-                                )}
-                            </p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={consultarEstadoSmtp}
-                        disabled={verificandoSmtp}
-                        className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 border border-slate-700/80 rounded-lg text-[11px] font-semibold text-slate-300 transition shrink-0 cursor-pointer flex items-center gap-1.5 self-start sm:self-center"
-                        title="Verificar conexión con el servidor SMTP"
-                    >
-                        <RefreshCw className={`w-3 h-3 ${verificandoSmtp ? 'animate-spin' : ''}`} />
-                        <span>{verificandoSmtp ? 'Verificando...' : 'Probar SMTP'}</span>
-                    </button>
-                </div>
-            )}
 
             {/* Selector de Pestañas */}
             <div className="flex border-b border-slate-800/80 gap-2">

@@ -231,29 +231,6 @@ export const ActaEscrutinio: React.FC<ActaEscrutinioProps> = ({ eleccionId, onVo
                     </div>
                 </div>
 
-                {/* Cadena de Custodia Inmutable */}
-                <div className="space-y-3">
-                    <h2 className="text-xs font-bold text-slate-300 print:text-black uppercase tracking-wider">
-                        Registro Inmutable y Sello Digital de Clausura
-                    </h2>
-                    <div className="p-4 bg-slate-950/80 print:bg-slate-50 border border-slate-800/80 print:border-slate-300 rounded-xl space-y-3 text-[11px] font-mono">
-                        <div>
-                            <span className="text-slate-400 print:text-slate-600 block text-[10px]">CÓDIGO GÉNESIS INICIAL</span>
-                            <p className="text-slate-300 print:text-black break-all">{acta.auditoriaCriptografica.hashGenesisPrev}</p>
-                        </div>
-                        <div>
-                            <span className="text-slate-400 print:text-slate-600 block text-[10px]">SELLO DIGITAL DE CLAUSURA (ESLABÓN FINAL)</span>
-                            <p className="text-cyan-400 print:text-cyan-900 font-bold break-all">
-                                {acta.auditoriaCriptografica.selloRaizFinalHash}
-                            </p>
-                        </div>
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-slate-400 print:text-slate-600 text-[10px] pt-2 border-t border-slate-900 print:border-slate-200">
-                            <span>Eslabones registrados: #{acta.auditoriaCriptografica.totalBloquesEncadenados}</span>
-                            <span>Sellado en: {new Date(acta.generadaAt).toLocaleString()}</span>
-                        </div>
-                    </div>
-                </div>
-
                 {/* Firmas de Responsabilidad */}
                 <div className="pt-8 border-t border-slate-800/80 print:border-slate-300 grid grid-cols-1 sm:grid-cols-2 gap-8 text-center text-xs">
                     <div className="space-y-8">

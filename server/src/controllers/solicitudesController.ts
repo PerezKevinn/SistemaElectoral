@@ -122,7 +122,7 @@ export const crearSolicitudRegistro = async (req: Request, res: Response): Promi
         if (votanteDocExistente) {
             res.status(409).json({
                 success: false,
-                error: `El documento ${docLimpio} ya se encuentra registrado y habilitado en el censo electoral oficial. No requiere una nueva solicitud.`,
+                error: 'Este documento de identidad ya se encuentra registrado y habilitado en el censo electoral oficial. Puede ingresar directamente al portal de votación.',
                 codigoError: 'DOCUMENTO_YA_EN_CENSO',
             });
             return;
@@ -137,7 +137,7 @@ export const crearSolicitudRegistro = async (req: Request, res: Response): Promi
         if (votanteCorreoExistente) {
             res.status(409).json({
                 success: false,
-                error: `El correo electrónico "${correoLimpio}" ya está asignado a otro elector activo en el censo electoral.`,
+                error: 'El correo electrónico ingresado ya se encuentra registrado para otro elector en el censo oficial.',
                 codigoError: 'CORREO_YA_EN_CENSO',
             });
             return;
@@ -156,8 +156,7 @@ export const crearSolicitudRegistro = async (req: Request, res: Response): Promi
             if (solicitudDocExistente.estado === 'PENDIENTE') {
                 res.status(409).json({
                     success: false,
-                    error: `Ya existe una solicitud de registro en proceso de revisión para el documento ${docLimpio}. Radicado oficial: ${solicitudDocExistente.codigo_radicado}`,
-                    codigoRadicado: solicitudDocExistente.codigo_radicado,
+                    error: 'Ya existe una solicitud de inscripción en proceso de revisión para este documento de identidad. Puede consultar su estado en la pestaña "Consultar Radicado".',
                     estado: 'PENDIENTE',
                     codigoError: 'SOLICITUD_PENDIENTE_EXISTENTE',
                 });
@@ -167,8 +166,7 @@ export const crearSolicitudRegistro = async (req: Request, res: Response): Promi
             if (solicitudDocExistente.estado === 'APROBADA') {
                 res.status(409).json({
                     success: false,
-                    error: `La solicitud para el documento ${docLimpio} ya fue previamente aprobada e incorporada al censo. Si no tiene sus credenciales, solicite un reenvío.`,
-                    codigoRadicado: solicitudDocExistente.codigo_radicado,
+                    error: 'La solicitud para este documento de identidad ya fue previamente aprobada e incorporada al censo electoral oficial.',
                     estado: 'APROBADA',
                     codigoError: 'SOLICITUD_YA_APROBADA',
                 });
@@ -186,7 +184,7 @@ export const crearSolicitudRegistro = async (req: Request, res: Response): Promi
         if (solicitudCorreoExistente) {
             res.status(409).json({
                 success: false,
-                error: `Ya existe una solicitud en revisión asociada al correo "${correoLimpio}" (Radicado: ${solicitudCorreoExistente.codigo_radicado}).`,
+                error: 'El correo electrónico ingresado ya cuenta con una solicitud de registro en trámite.',
                 codigoError: 'CORREO_CON_SOLICITUD_PENDIENTE',
             });
             return;
@@ -276,6 +274,35 @@ export const consultarEstadoSolicitud = async (req: Request, res: Response): Pro
 
         const ultimaSolicitud = solicitudes && solicitudes.length > 0 ? solicitudes[0] : null;
 
+        // Sanitización y enmascaramiento de datos personales (PII) para consulta pública
+        const enmascararTexto = (txt: string): string => {
+            if (!txt) return '';
+            return txt.split(' ').map((p) => (p.length > 2 ? `${p[0]}••••${p[p.length - 1]}` : `${p[0]}•`)).join(' ');
+        };
+
+        const enmascararEmail = (email: string): string => {
+            if (!email || !email.includes('@')) return '';
+            const [user, domain] = email.split('@');
+            const maskedUser = user.length > 3 ? `${user.slice(0, 2)}••••${user.slice(-1)}` : `${user[0]}••••`;
+            return `${maskedUser}@${domain}`;
+        };
+
+        const solicitudSanitizada = ultimaSolicitud
+            ? {
+                id: ultimaSolicitud.id,
+                codigo_radicado: ultimaSolicitud.codigo_radicado,
+                documento_identidad: ultimaSolicitud.documento_identidad,
+                nombres: enmascararTexto(ultimaSolicitud.nombres),
+                apellidos: enmascararTexto(ultimaSolicitud.apellidos),
+                correo: enmascararEmail(ultimaSolicitud.correo),
+                subdirectiva: ultimaSolicitud.subdirectiva,
+                telefono: ultimaSolicitud.telefono ? `••••${ultimaSolicitud.telefono.slice(-4)}` : '',
+                estado: ultimaSolicitud.estado,
+                motivo_rechazo: ultimaSolicitud.motivo_rechazo,
+                creado_at: ultimaSolicitud.creado_at,
+            }
+            : null;
+
         res.json({
             success: true,
             documento,
@@ -284,11 +311,10 @@ export const consultarEstadoSolicitud = async (req: Request, res: Response): Pro
                 ? {
                     habilitado: enCenso.esta_habilitado,
                     yaVoto: enCenso.ha_solicitado_token,
-                    nombre: `${enCenso.nombres} ${enCenso.apellidos}`.trim(),
+                    nombre: enmascararTexto(`${enCenso.nombres} ${enCenso.apellidos}`.trim()),
                 }
                 : null,
-            solicitud: ultimaSolicitud,
-            historial: solicitudes || [],
+            solicitud: solicitudSanitizada,
         });
     } catch (err: any) {
         console.error('Error en consultarEstadoSolicitud:', err);

@@ -29,7 +29,7 @@ const getJwtSecret = (): string => {
 };
 
 export const verificarRol = (rolesPermitidos: ('ADMIN' | 'AUDITOR')[]) => {
-    return async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const authHeader = req.headers.authorization;
             if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -62,8 +62,8 @@ export const verificarRol = (rolesPermitidos: ('ADMIN' | 'AUDITOR')[]) => {
                 }
             }
 
-            req.usuario = decoded;
-            req.user = decoded;
+            (req as AuthRequest).usuario = decoded;
+            (req as AuthRequest).user = decoded;
             next();
         } catch (error: any) {
             res.status(401).json({ success: false, error: 'Sesión inválida, alterada o expirada.' });

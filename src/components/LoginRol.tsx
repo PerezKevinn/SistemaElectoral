@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Shield, Lock, UserCheck, KeyRound, User, AlertCircle, ShieldCheck, CheckCircle2, ChevronRight, Fingerprint, LockKeyhole, Eye, EyeOff } from 'lucide-react';
+import { Shield, Lock, UserCheck, KeyRound, User, AlertCircle, ShieldCheck, CheckCircle2, ChevronRight, Fingerprint, LockKeyhole, Eye, EyeOff, UserPlus } from 'lucide-react';
+import { ModalSolicitudRegistro } from './ModalSolicitudRegistro';
 
 type Rol = 'VOTANTE' | 'AUDITOR' | 'ADMIN';
 
@@ -21,6 +22,7 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
     const [mostrarClave, setMostrarClave] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [modalSolicitudAbierto, setModalSolicitudAbierto] = useState(false);
 
     const handleIngreso = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -298,6 +300,20 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
                             </>
                         )}
                     </button>
+
+                    {/* Botón para solicitar inscripción en el censo */}
+                    {rolSeleccionado === 'VOTANTE' && (
+                        <div className="pt-2 text-center">
+                            <button
+                                type="button"
+                                onClick={() => setModalSolicitudAbierto(true)}
+                                className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-400 hover:text-emerald-300 hover:underline transition cursor-pointer p-1"
+                            >
+                                <UserPlus className="w-3.5 h-3.5" />
+                                <span>¿No figura en el censo? Solicite su inscripción oficial aquí</span>
+                            </button>
+                        </div>
+                    )}
                 </form>
 
                 {/* Security Trust Note */}
@@ -306,9 +322,21 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
                         <Lock className="w-3.5 h-3.5 text-slate-400" />
                         <span>Conexión Segura y Protegida</span>
                     </div>
-                    <span className="text-[10px] text-slate-500">Canal Oficial Auditado</span>
+                    <button
+                        type="button"
+                        onClick={() => setModalSolicitudAbierto(true)}
+                        className="text-[10px] text-slate-400 hover:text-emerald-400 transition cursor-pointer"
+                    >
+                        Consultar Radicado
+                    </button>
                 </div>
             </div>
+
+            {/* Modal de Solicitud de Registro de Votante */}
+            <ModalSolicitudRegistro
+                isOpen={modalSolicitudAbierto}
+                onClose={() => setModalSolicitudAbierto(false)}
+            />
         </div>
     );
 };

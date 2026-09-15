@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, User, KeyRound, Copy, Check, Eye, EyeOff, Key } from 'lucide-react';
+import { ShieldCheck, Lock, User, KeyRound, Copy, Check, Eye, EyeOff, Key, UserPlus } from 'lucide-react';
+import { ModalSolicitudRegistro } from './ModalSolicitudRegistro';
 
 interface LoginVotanteProps {
     onLoginExitoso: (tokenVotacion: string, eleccionActivaId: string) => void;
@@ -10,6 +11,7 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
     const [password, setPassword] = useState('');
     const [mostrarPassword, setMostrarPassword] = useState(false);
     const [codigoMfa, setCodigoMfa] = useState('');
+    const [modalSolicitudAbierto, setModalSolicitudAbierto] = useState(false);
 
     // Estados de cambio obligatorio de contraseña temporal
     const [pasoCambioPassword, setPasoCambioPassword] = useState(false);
@@ -325,6 +327,17 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
                         >
                             {loading ? 'Verificando Censo...' : 'Siguiente Paso →'}
                         </button>
+
+                        <div className="pt-2 text-center">
+                            <button
+                                type="button"
+                                onClick={() => setModalSolicitudAbierto(true)}
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300 hover:underline transition cursor-pointer p-1"
+                            >
+                                <UserPlus className="w-3.5 h-3.5" />
+                                <span>¿No figura en el censo? Solicite su inscripción oficial aquí</span>
+                            </button>
+                        </div>
                     </form>
                 ) : (
                     <form onSubmit={handleValidarMfa} className="space-y-5">
@@ -403,6 +416,12 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
                     </p>
                 </div>
             </div>
+
+            {/* Modal de Solicitud de Registro de Votante */}
+            <ModalSolicitudRegistro
+                isOpen={modalSolicitudAbierto}
+                onClose={() => setModalSolicitudAbierto(false)}
+            />
         </div>
     );
 };

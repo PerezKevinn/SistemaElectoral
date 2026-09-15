@@ -18,6 +18,7 @@ import {
     Check,
     Sparkles,
     AlertTriangle,
+    UserCheck,
 } from 'lucide-react';
 import { useToast } from './Toast';
 
@@ -47,9 +48,10 @@ interface VotanteCenso {
 
 interface PanelCensoVotantesProps {
     onVolver: () => void;
+    onVerSolicitudes?: () => void;
 }
 
-export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver }) => {
+export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver, onVerSolicitudes }) => {
     const toast = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -410,6 +412,15 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
                 </div>
 
                 <div className="flex items-center gap-2">
+                    {onVerSolicitudes && (
+                        <button
+                            onClick={onVerSolicitudes}
+                            className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 rounded-xl text-xs font-semibold transition cursor-pointer shadow-sm"
+                        >
+                            <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
+                            <span>Solicitudes de Registro</span>
+                        </button>
+                    )}
                     <button
                         onClick={onVolver}
                         className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl text-xs font-semibold transition cursor-pointer"

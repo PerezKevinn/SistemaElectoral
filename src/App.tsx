@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut, ShieldCheck, Play, BarChart3, Lock, FileText, Activity, Users, Menu, X, User } from 'lucide-react';
+import { LogOut, ShieldCheck, Play, BarChart3, Lock, FileText, Activity, Users, Menu, X, User, UserCheck } from 'lucide-react';
 import { LoginRol } from './components/LoginRol';
 import { LoginVotante } from './components/LoginVotante';
 import { CabinaVotacion, type Candidato } from './components/CabinaVotacion';
@@ -12,6 +12,7 @@ import { ActaEscrutinio } from './components/ActaEscrutinio';
 import { PanelLogsAuditoria } from './components/PanelLogsAuditoria';
 import { PanelCredenciales } from './components/PanelCredenciales';
 import { PanelCensoVotantes } from './components/PanelCensoVotantes';
+import { PanelSolicitudesRegistro } from './components/PanelSolicitudesRegistro';
 import { VerificadorCadenaHashes } from './components/VerificadorCadenaHashes';
 import { ToastProvider } from './components/Toast';
 
@@ -25,8 +26,8 @@ interface EleccionInfo {
 
 type Rol = 'VOTANTE' | 'AUDITOR' | 'ADMIN';
 type VistaVotante = 'LOGIN' | 'CABINA' | 'COMPROBANTE' | 'VERIFICADOR';
-type VistaAdmin = 'APERTURA' | 'ESCRUTINIO' | 'CADENA' | 'CIERRE' | 'ACTA' | 'LOGS' | 'CREDENCIALES' | 'CENSO_VOTANTES';
-type VistaAuditor = 'VERIFICADOR' | 'ESCRUTINIO' | 'CADENA' | 'ACTA' | 'LOGS';
+type VistaAdmin = 'APERTURA' | 'ESCRUTINIO' | 'CADENA' | 'CIERRE' | 'ACTA' | 'LOGS' | 'CREDENCIALES' | 'CENSO_VOTANTES' | 'SOLICITUDES';
+type VistaAuditor = 'VERIFICADOR' | 'SOLICITUDES' | 'ESCRUTINIO' | 'CADENA' | 'ACTA' | 'LOGS';
 
 interface UsuarioStaff {
   id: string;
@@ -175,6 +176,7 @@ function AppContent() {
   const adminNavItems = [
     { id: 'APERTURA' as VistaAdmin, label: 'Apertura', icon: Play, desc: 'Configurar jornada y planchas' },
     { id: 'CENSO_VOTANTES' as VistaAdmin, label: 'Censo / Votantes', icon: Users, desc: 'Carga Excel y gestión de electores' },
+    { id: 'SOLICITUDES' as VistaAdmin, label: 'Solicitudes', icon: UserCheck, desc: 'Aprobar y auditar inscripciones' },
     { id: 'ESCRUTINIO' as VistaAdmin, label: 'Escrutinio', icon: BarChart3, desc: 'Conteo y tendencias en vivo' },
     //{ id: 'CADENA' as VistaAdmin, label: 'Cadena SHA-256', icon: Link2, desc: 'Auditoría matemática de inmutabilidad' },
     { id: 'CIERRE' as VistaAdmin, label: 'Cierre', icon: Lock, desc: 'Sellado definitivo de la urna' },
@@ -186,6 +188,7 @@ function AppContent() {
   // Opciones de navegación Auditor
   const auditorNavItems = [
     { id: 'VERIFICADOR' as VistaAuditor, label: 'Verificador', icon: ShieldCheck, desc: 'Validar comprobantes de votantes' },
+    { id: 'SOLICITUDES' as VistaAuditor, label: 'Solicitudes', icon: UserCheck, desc: 'Verificar y aprobar inscripciones' },
     { id: 'ESCRUTINIO' as VistaAuditor, label: 'Escrutinio', icon: BarChart3, desc: 'Resultados y participación' },
     //{ id: 'CADENA' as VistaAuditor, label: 'Cadena SHA-256', icon: Link2, desc: 'Verificar eslabones y hashes' },
     { id: 'ACTA' as VistaAuditor, label: 'Acta Oficial', icon: FileText, desc: 'Inspeccionar sellado de acta' },
@@ -608,6 +611,9 @@ function AppContent() {
             {vistaAuditor === 'VERIFICADOR' && (
               <VerificadorComprobante eleccionId={eleccionId} onVolver={() => setVistaAuditor('ESCRUTINIO')} />
             )}
+            {vistaAuditor === 'SOLICITUDES' && (
+              <PanelSolicitudesRegistro rolUsuario="AUDITOR" onVolver={() => setVistaAuditor('VERIFICADOR')} />
+            )}
             {vistaAuditor === 'ESCRUTINIO' && (
               <PanelEscrutinio eleccionId={eleccionId} onVolver={() => setVistaAuditor('VERIFICADOR')} />
             )}
@@ -638,6 +644,15 @@ function AppContent() {
                 onVolver={() => setVistaAdmin('ESCRUTINIO')}
               />
             )}
+            {vistaAdmin === 'CENSO_VOTANTES' && (
+              <PanelCensoVotantes
+                onVolver={() => setVistaAdmin('ESCRUTINIO')}
+                onVerSolicitudes={() => setVistaAdmin('SOLICITUDES')}
+              />
+            )}
+            {vistaAdmin === 'SOLICITUDES' && (
+              <PanelSolicitudesRegistro rolUsuario="ADMIN" onVolver={() => setVistaAdmin('CENSO_VOTANTES')} />
+            )}
             {vistaAdmin === 'ESCRUTINIO' && (
               <PanelEscrutinio eleccionId={eleccionId} onVolver={() => setVistaAdmin('APERTURA')} />
             )}
@@ -663,9 +678,6 @@ function AppContent() {
             )}
             {vistaAdmin === 'CREDENCIALES' && (
               <PanelCredenciales onVolver={() => setVistaAdmin('ESCRUTINIO')} />
-            )}
-            {vistaAdmin === 'CENSO_VOTANTES' && (
-              <PanelCensoVotantes onVolver={() => setVistaAdmin('ESCRUTINIO')} />
             )}
           </div>
         )}

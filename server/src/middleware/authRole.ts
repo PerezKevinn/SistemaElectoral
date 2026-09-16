@@ -45,8 +45,8 @@ export const verificarRol = (rolesPermitidos: ('ADMIN' | 'AUDITOR')[]) => {
                 return;
             }
 
-            // Comprobación en vivo del estado del usuario en la base de datos
-            if (decoded.id) {
+            // Comprobación en vivo del estado del usuario en la base de datos (excepto Super Admin configurado fuera de BD)
+            if (decoded.id && decoded.id !== 'SUPER_ADMIN_ROOT' && !decoded.esSuperAdmin) {
                 const { data: staff, error } = await censoDb
                     .from('personal_electoral')
                     .select('esta_activo')

@@ -44,6 +44,69 @@ export const loginStaff = async (req: Request, res: Response): Promise<void> => 
             return;
         }
 
+        const rolSolicitado = req.body.rol ? String(req.body.rol).trim().toUpperCase() : null;
+
+        // A. AUTENTICACIÓN PRIORITARIA DE SUPER ADMINISTRADOR (IN-MEMORY / SIN TABLA DE STAFF)
+        const superAdminDoc = (process.env.SUPER_ADMIN_DOCUMENTO || 'superadmin').trim();
+        const superAdminPass = (process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin2026!#').trim();
+        const superAdminHash = process.env.SUPER_ADMIN_PASSWORD_HASH;
+        const superAdminNombre = process.env.SUPER_ADMIN_NOMBRE || 'Super Administrador Principal';
+        const superAdminCargo = process.env.SUPER_ADMIN_CARGO || 'Administrador General de Infraestructura';
+
+        if (documento.toLowerCase() === superAdminDoc.toLowerCase()) {
+            let passwordValida = false;
+            if (superAdminHash) {
+                passwordValida = await bcrypt.compare(password, superAdminHash);
+            } else {
+                passwordValida = (password === superAdminPass);
+            }
+
+            if (!passwordValida) {
+                res.status(401).json({ success: false, error: 'Credenciales de Super Administrador incorrectas.' });
+                return;
+            }
+
+            if (rolSolicitado && rolSolicitado !== 'ADMIN') {
+                res.status(401).json({ success: false, error: 'El Super Administrador tiene asignado el perfil institucional ADMIN.' });
+                return;
+            }
+
+            const token = jwt.sign(
+                {
+                    id: 'SUPER_ADMIN_ROOT',
+                    documento: superAdminDoc,
+                    nombre: superAdminNombre,
+                    cargo: superAdminCargo,
+                    rol: 'ADMIN',
+                    esSuperAdmin: true,
+                },
+                getJwtSecret(),
+                { expiresIn: '8h', algorithm: 'HS256' }
+            );
+
+            await registrarAuditoriaStaff('LOGIN_SUPER_ADMIN', `SUPER_ADMIN_${superAdminDoc}`, req, {
+                documento: superAdminDoc,
+                nombre: superAdminNombre,
+                cargo: superAdminCargo,
+                rol: 'ADMIN',
+            });
+
+            res.json({
+                success: true,
+                token,
+                usuario: {
+                    id: 'SUPER_ADMIN_ROOT',
+                    documento: superAdminDoc,
+                    nombre: superAdminNombre,
+                    cargo: superAdminCargo,
+                    rol: 'ADMIN',
+                    esSuperAdmin: true,
+                },
+            });
+            return;
+        }
+
+        // B. AUTENTICACIÓN ESTÁNDAR DE PERSONAL ELECTORAL EN BASE DE DATOS
         const { data: funcionario, error } = await censoDb
             .from('personal_electoral')
             .select('*')
@@ -56,7 +119,6 @@ export const loginStaff = async (req: Request, res: Response): Promise<void> => 
             return;
         }
 
-        const rolSolicitado = req.body.rol ? String(req.body.rol).trim().toUpperCase() : null;
         if (rolSolicitado && funcionario.rol !== rolSolicitado) {
             res.status(401).json({ success: false, error: 'Credenciales institucionales incorrectas o no autorizadas.' });
             return;

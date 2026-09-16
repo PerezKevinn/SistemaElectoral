@@ -15,6 +15,7 @@ import {
     Phone,
     Building2,
     FileText,
+    Ban,
 } from 'lucide-react';
 import { useToast } from './Toast';
 
@@ -61,7 +62,7 @@ export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ 
             correo: string;
             subdirectiva: string;
             telefono: string;
-            estado: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA';
+            estado: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'REVOCADA';
             motivo_rechazo?: string | null;
             revisado_por?: string | null;
             revisado_rol?: string | null;
@@ -511,13 +512,18 @@ export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ 
                                                         </span>
                                                     )}
                                                     {resultadoConsulta.solicitud.estado === 'APROBADA' && (
-                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800/60">
-                                                            <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Aprobada Oficialmente
-                                                        </span>
+                                                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800/60">
+                                                             <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Aprobada Oficialmente
+                                                         </span>
                                                     )}
                                                     {resultadoConsulta.solicitud.estado === 'RECHAZADA' && (
-                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-950 text-rose-300 border border-rose-800/60">
-                                                            <XCircle className="w-3 h-3 text-rose-400" /> Solicitud Rechazada
+                                                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-950 text-rose-300 border border-rose-800/60">
+                                                             <XCircle className="w-3 h-3 text-rose-400" /> Solicitud Rechazada
+                                                         </span>
+                                                    )}
+                                                    {resultadoConsulta.solicitud.estado === 'REVOCADA' && (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-800/60">
+                                                            <Ban className="w-3 h-3 text-purple-400" /> Inscripción Revocada
                                                         </span>
                                                     )}
                                                 </div>
@@ -551,6 +557,17 @@ export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ 
                                                     <p>{resultadoConsulta.solicitud.motivo_rechazo}</p>
                                                     <p className="text-[10px] text-slate-400 mt-1">
                                                         Puede corregir sus datos y presentar una nueva solicitud de inscripción.
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Si fue revocada, mostrar motivo y orientación */}
+                                            {resultadoConsulta.solicitud.estado === 'REVOCADA' && resultadoConsulta.solicitud.motivo_rechazo && (
+                                                <div className="p-2.5 rounded-lg bg-purple-950/30 border border-purple-900/50 text-[11px] text-purple-300 space-y-1">
+                                                    <span className="font-bold block">Motivo de Revocación / Desvinculación:</span>
+                                                    <p>{resultadoConsulta.solicitud.motivo_rechazo}</p>
+                                                    <p className="text-[10px] text-slate-400 mt-1">
+                                                        Si su vinculación ha sido regularizada, puede radicar una nueva solicitud en la pestaña "Nueva Solicitud".
                                                     </p>
                                                 </div>
                                             )}

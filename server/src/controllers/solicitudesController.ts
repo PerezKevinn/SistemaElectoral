@@ -164,13 +164,16 @@ export const crearSolicitudRegistro = async (req: Request, res: Response): Promi
             }
 
             if (solicitudDocExistente.estado === 'APROBADA') {
-                res.status(409).json({
-                    success: false,
-                    error: 'La solicitud para este documento de identidad ya fue previamente aprobada e incorporada al censo electoral oficial.',
-                    estado: 'APROBADA',
-                    codigoError: 'SOLICITUD_YA_APROBADA',
-                });
-                return;
+                // Si la solicitud anterior figuraba APROBADA pero el votante ya no existe en el censo (fue eliminado previamente),
+                // actualizamos la solicitud anterior a REVOCADA para mantener la trazabilidad histórica y permitir su nueva radicación.
+                await censoDb
+                    .from('solicitudes_registro_votante')
+                    .update({
+                        estado: 'REVOCADA',
+                        motivo_rechazo: 'Inscripción previa revocada tras desvinculación del censo electoral oficial.',
+                        actualizado_at: new Date().toISOString(),
+                    })
+                    .eq('id', solicitudDocExistente.id);
             }
         }
 
@@ -367,6 +370,7 @@ export const listarSolicitudes = async (req: AuthRequest, res: Response): Promis
         const pendientesCount = (statsData || []).filter((s) => s.estado === 'PENDIENTE').length;
         const aprobadasCount = (statsData || []).filter((s) => s.estado === 'APROBADA').length;
         const rechazadasCount = (statsData || []).filter((s) => s.estado === 'RECHAZADA').length;
+        const revocadasCount = (statsData || []).filter((s) => s.estado === 'REVOCADA').length;
 
         res.json({
             success: true,
@@ -376,6 +380,7 @@ export const listarSolicitudes = async (req: AuthRequest, res: Response): Promis
                 pendientes: pendientesCount,
                 aprobadas: aprobadasCount,
                 rechazadas: rechazadasCount,
+                revocadas: revocadasCount,
             },
             solicitudes: filtradas,
         });

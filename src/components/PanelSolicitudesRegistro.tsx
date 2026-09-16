@@ -11,6 +11,7 @@ import {
     X,
     AlertTriangle,
     ShieldCheck,
+    Ban,
 } from 'lucide-react';
 import { useToast } from './Toast';
 
@@ -23,7 +24,7 @@ export interface SolicitudVotante {
     correo: string;
     subdirectiva: string;
     telefono: string;
-    estado: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA';
+    estado: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'REVOCADA';
     motivo_rechazo?: string | null;
     revisado_por?: string | null;
     revisado_rol?: string | null;
@@ -45,9 +46,9 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
 
     const [solicitudes, setSolicitudes] = useState<SolicitudVotante[]>([]);
     const [cargando, setCargando] = useState(false);
-    const [filtroEstado, setFiltroEstado] = useState<'TODAS' | 'PENDIENTE' | 'APROBADA' | 'RECHAZADA'>('TODAS');
+    const [filtroEstado, setFiltroEstado] = useState<'TODAS' | 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'REVOCADA'>('TODAS');
     const [busqueda, setBusqueda] = useState('');
-    const [metricas, setMetricas] = useState({ total: 0, pendientes: 0, aprobadas: 0, rechazadas: 0 });
+    const [metricas, setMetricas] = useState({ total: 0, pendientes: 0, aprobadas: 0, rechazadas: 0, revocadas: 0 });
 
     // Selección múltiple para aprobación masiva
     const [seleccionadas, setSeleccionadas] = useState<string[]>([]);
@@ -276,23 +277,23 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
             </div>
 
             {/* Metricas Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                 <div className="glass-panel p-4 rounded-xl border border-amber-900/40 bg-amber-950/10">
                     <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-semibold text-amber-300">Pendientes de Revisión</span>
+                        <span className="text-xs font-semibold text-amber-300">Pendientes</span>
                         <Clock className="w-4 h-4 text-amber-400" />
                     </div>
                     <div className="text-2xl font-bold font-mono text-white">{metricas.pendientes}</div>
-                    <span className="text-[10px] text-slate-400">Esperando verificación</span>
+                    <span className="text-[10px] text-slate-400">Por revisar</span>
                 </div>
 
                 <div className="glass-panel p-4 rounded-xl border border-emerald-900/40 bg-emerald-950/10">
                     <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-semibold text-emerald-300">Aprobadas e Incorporadas</span>
+                        <span className="text-xs font-semibold text-emerald-300">Aprobadas</span>
                         <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                     </div>
                     <div className="text-2xl font-bold font-mono text-white">{metricas.aprobadas}</div>
-                    <span className="text-[10px] text-slate-400">Credenciales emitidas</span>
+                    <span className="text-[10px] text-slate-400">En censo</span>
                 </div>
 
                 <div className="glass-panel p-4 rounded-xl border border-rose-900/40 bg-rose-950/10">
@@ -301,16 +302,25 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                         <XCircle className="w-4 h-4 text-rose-400" />
                     </div>
                     <div className="text-2xl font-bold font-mono text-white">{metricas.rechazadas}</div>
-                    <span className="text-[10px] text-slate-400">Con motivo asentado</span>
+                    <span className="text-[10px] text-slate-400">No aprobadas</span>
                 </div>
 
-                <div className="glass-panel p-4 rounded-xl border border-slate-700/80 bg-slate-900/40">
+                <div className="glass-panel p-4 rounded-xl border border-purple-900/40 bg-purple-950/10">
                     <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-semibold text-slate-300">Total Radicadas</span>
+                        <span className="text-xs font-semibold text-purple-300">Revocadas</span>
+                        <Ban className="w-4 h-4 text-purple-400" />
+                    </div>
+                    <div className="text-2xl font-bold font-mono text-white">{metricas.revocadas || 0}</div>
+                    <span className="text-[10px] text-slate-400">Desvinculadas</span>
+                </div>
+
+                <div className="glass-panel p-4 rounded-xl border border-slate-700/80 bg-slate-900/40 col-span-2 sm:col-span-1">
+                    <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-semibold text-slate-300">Total</span>
                         <Shield className="w-4 h-4 text-cyan-400" />
                     </div>
                     <div className="text-2xl font-bold font-mono text-white">{metricas.total}</div>
-                    <span className="text-[10px] text-slate-400">Registro histórico</span>
+                    <span className="text-[10px] text-slate-400">Histórico</span>
                 </div>
             </div>
 
@@ -332,7 +342,7 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
 
                     {/* Filtros de Estado */}
                     <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-                        {(['TODAS', 'PENDIENTE', 'APROBADA', 'RECHAZADA'] as const).map((est) => (
+                        {(['TODAS', 'PENDIENTE', 'APROBADA', 'RECHAZADA', 'REVOCADA'] as const).map((est) => (
                             <button
                                 key={est}
                                 onClick={() => setFiltroEstado(est)}
@@ -343,11 +353,21 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                                             ? 'bg-emerald-600 text-white'
                                             : est === 'RECHAZADA'
                                                 ? 'bg-rose-600 text-white'
-                                                : 'bg-cyan-600 text-white'
+                                                : est === 'REVOCADA'
+                                                    ? 'bg-purple-600 text-white'
+                                                    : 'bg-cyan-600 text-white'
                                     : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
                                     }`}
                             >
-                                {est === 'TODAS' ? 'Todas' : est === 'PENDIENTE' ? 'Pendientes' : est === 'APROBADA' ? 'Aprobadas' : 'Rechazadas'}
+                                {est === 'TODAS'
+                                    ? 'Todas'
+                                    : est === 'PENDIENTE'
+                                        ? 'Pendientes'
+                                        : est === 'APROBADA'
+                                            ? 'Aprobadas'
+                                            : est === 'RECHAZADA'
+                                                ? 'Rechazadas'
+                                                : 'Revocadas'}
                             </button>
                         ))}
                     </div>
@@ -358,102 +378,88 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                     <table className="w-full text-left text-xs text-slate-300 font-sans">
                         <thead className="bg-slate-900/90 text-slate-400 uppercase text-[10px] font-mono border-b border-slate-800">
                             <tr>
-                                <th className="px-3 py-3 w-10 text-center">
+                                <th className="p-3 w-8">
                                     <input
                                         type="checkbox"
                                         checked={
-                                            seleccionadas.length > 0 &&
+                                            solicitudes.filter((s) => s.estado === 'PENDIENTE').length > 0 &&
                                             seleccionadas.length === solicitudes.filter((s) => s.estado === 'PENDIENTE').length
                                         }
                                         onChange={toggleSeleccionarTodas}
-                                        className="rounded border-slate-700 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
-                                        title="Seleccionar todas las pendientes"
+                                        className="rounded border-slate-700 bg-slate-900 text-cyan-600 focus:ring-0 cursor-pointer"
+                                        title="Seleccionar todas las solicitudes pendientes"
                                     />
                                 </th>
-                                <th className="px-4 py-3">Radicado / Fecha</th>
+                                <th className="px-4 py-3">Radicado</th>
                                 <th className="px-4 py-3">Documento</th>
-                                <th className="px-4 py-3">Elector</th>
-                                <th className="px-4 py-3">Contacto Oficial</th>
+                                <th className="px-4 py-3">Nombre del Elector</th>
+                                <th className="px-4 py-3">Correo Electrónico</th>
                                 <th className="px-4 py-3">Subdirectiva</th>
                                 <th className="px-4 py-3">Estado</th>
-                                <th className="px-4 py-3 text-right">Acciones de Aprobación</th>
+                                <th className="px-4 py-3 text-right">Acción</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/60 text-xs">
                             {cargando ? (
                                 <tr>
-                                    <td colSpan={8} className="py-12 text-center text-slate-500">
-                                        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-cyan-400" />
+                                    <td colSpan={8} className="py-8 text-center text-slate-500">
+                                        <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-cyan-400" />
                                         Cargando solicitudes de registro...
                                     </td>
                                 </tr>
                             ) : solicitudes.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="py-12 text-center text-slate-500">
-                                        No se encontraron solicitudes con los criterios de búsqueda.
+                                    <td colSpan={8} className="py-8 text-center text-slate-500">
+                                        No se encontraron solicitudes con los criterios seleccionados.
                                     </td>
                                 </tr>
                             ) : (
                                 solicitudes.map((sol) => {
                                     const esPendiente = sol.estado === 'PENDIENTE';
                                     const estaSeleccionada = seleccionadas.includes(sol.id);
+
                                     return (
                                         <tr
                                             key={sol.id}
-                                            className={`hover:bg-slate-900/50 transition ${estaSeleccionada ? 'bg-cyan-950/20' : ''
+                                            className={`hover:bg-slate-900/40 transition ${estaSeleccionada ? 'bg-cyan-950/20' : ''
                                                 }`}
                                         >
-                                            {/* Checkbox */}
-                                            <td className="px-3 py-3 text-center">
-                                                {esPendiente ? (
+                                            <td className="p-3">
+                                                {esPendiente && (
                                                     <input
                                                         type="checkbox"
                                                         checked={estaSeleccionada}
                                                         onChange={() => toggleSeleccion(sol.id)}
-                                                        className="rounded border-slate-700 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                                                        className="rounded border-slate-700 bg-slate-900 text-cyan-600 focus:ring-0 cursor-pointer"
                                                     />
-                                                ) : (
-                                                    <span className="text-slate-700">•</span>
                                                 )}
                                             </td>
 
-                                            {/* Radicado / Fecha */}
-                                            <td className="px-4 py-3">
-                                                <span className="font-mono font-bold text-white block">
-                                                    {sol.codigo_radicado}
-                                                </span>
-                                                <span className="text-[10px] text-slate-500 font-mono">
-                                                    {new Date(sol.creado_at).toLocaleDateString('es-CO', {
-                                                        day: '2-digit',
-                                                        month: 'short',
-                                                        hour: '2-digit',
-                                                        minute: '2-digit',
-                                                    })}
-                                                </span>
+                                            {/* Radicado */}
+                                            <td className="px-4 py-3 font-mono text-cyan-400 font-bold whitespace-nowrap">
+                                                {sol.codigo_radicado}
                                             </td>
 
                                             {/* Documento */}
-                                            <td className="px-4 py-3 font-mono font-semibold text-slate-200">
+                                            <td className="px-4 py-3 font-mono font-semibold text-white whitespace-nowrap">
                                                 {sol.documento_identidad}
                                             </td>
 
-                                            {/* Elector */}
+                                            {/* Nombre y Teléfono */}
                                             <td className="px-4 py-3">
                                                 <span className="font-semibold text-slate-200 block">
                                                     {sol.nombres} {sol.apellidos}
                                                 </span>
-                                            </td>
-
-                                            {/* Contacto */}
-                                            <td className="px-4 py-3">
-                                                <span className="font-mono text-slate-300 block text-[11px] truncate max-w-[180px]" title={sol.correo}>
-                                                    {sol.correo}
-                                                </span>
                                                 {sol.telefono && (
-                                                    <span className="text-[10px] text-slate-500 font-mono block">
+                                                    <span className="text-[10px] text-slate-500 font-mono">
                                                         Tel: {sol.telefono}
                                                     </span>
                                                 )}
+                                            </td>
+
+                                            {/* Correo */}
+                                            <td className="px-4 py-3 font-mono text-slate-400">
+                                                {sol.correo}
                                             </td>
 
                                             {/* Subdirectiva */}
@@ -489,6 +495,18 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                                                         </span>
                                                         {sol.motivo_rechazo && (
                                                             <span className="block text-[9px] text-rose-400 mt-0.5 line-clamp-1" title={sol.motivo_rechazo}>
+                                                                {sol.motivo_rechazo}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {sol.estado === 'REVOCADA' && (
+                                                    <div>
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-800/60">
+                                                            <Ban className="w-3 h-3 text-purple-400" /> Revocada
+                                                        </span>
+                                                        {sol.motivo_rechazo && (
+                                                            <span className="block text-[9px] text-purple-400 mt-0.5 line-clamp-1" title={sol.motivo_rechazo}>
                                                                 {sol.motivo_rechazo}
                                                             </span>
                                                         )}

@@ -569,10 +569,38 @@ export const eliminarVotante = async (req: AuthRequest, res: Response): Promise<
 
         if (deleteError) throw deleteError;
 
-        // Registrar exhaustivamente en la bitácora de auditoría
+        // Trazabilidad total: Actualizar solicitudes de registro previas asociadas a este documento a 'REVOCADA'
         const adminNombre = req.usuario?.nombre || 'ADMIN_OFICIAL';
         const adminRol = req.usuario?.rol || 'ADMIN';
+        let solicitudesRevocadasCount = 0;
 
+        try {
+            const { data: solicitudesPrevias, error: errSolQuery } = await censoDb
+                .from('solicitudes_registro_votante')
+                .select('id, codigo_radicado, estado')
+                .eq('documento_identidad', votante.documento_identidad);
+
+            if (!errSolQuery && solicitudesPrevias && solicitudesPrevias.length > 0) {
+                const { error: errSolUpdate } = await censoDb
+                    .from('solicitudes_registro_votante')
+                    .update({
+                        estado: 'REVOCADA',
+                        motivo_rechazo: `Inscripción revocada por eliminación del elector en el censo electoral oficial. Motivo: ${motivo}`,
+                        revisado_por: `${adminRol}_${adminNombre}`,
+                        revisado_at: new Date().toISOString(),
+                        actualizado_at: new Date().toISOString(),
+                    })
+                    .eq('documento_identidad', votante.documento_identidad);
+
+                if (!errSolUpdate) {
+                    solicitudesRevocadasCount = solicitudesPrevias.length;
+                }
+            }
+        } catch (errSol) {
+            console.error('Advertencia al revocar solicitudes asociadas al votante:', errSol);
+        }
+
+        // Registrar exhaustivamente en la bitácora de auditoría
         await registrarAuditoria(
             'ELIMINACION_VOTANTE',
             `${adminRol}_${adminNombre}`,
@@ -585,6 +613,7 @@ export const eliminarVotante = async (req: AuthRequest, res: Response): Promise<
                 estado_habilitado: votante.esta_habilitado,
                 habia_votado: votante.ha_solicitado_token,
                 motivo_eliminacion: motivo,
+                solicitudes_revocadas_asociadas: solicitudesRevocadasCount,
                 eliminado_por: adminNombre,
                 rol_ejecutor: adminRol,
                 fecha_registro_original: votante.creado_at,
@@ -593,12 +622,13 @@ export const eliminarVotante = async (req: AuthRequest, res: Response): Promise<
 
         res.json({
             success: true,
-            mensaje: `Elector ${votante.nombres} ${votante.apellidos} (Doc: ${votante.documento_identidad}) eliminado del censo. Evento registrado en bitácora de auditoría.`,
+            mensaje: `Elector ${votante.nombres} ${votante.apellidos} (Doc: ${votante.documento_identidad}) eliminado del censo. Solicitudes vinculadas revocadas (${solicitudesRevocadasCount}). Evento registrado en bitácora.`,
             votanteEliminado: {
                 id_votante: votante.id_votante,
                 documento_identidad: votante.documento_identidad,
                 nombre: `${votante.nombres} ${votante.apellidos}`.trim(),
             },
+            solicitudesRevocadas: solicitudesRevocadasCount,
         });
     } catch (err: any) {
         console.error('Error en eliminarVotante:', err);

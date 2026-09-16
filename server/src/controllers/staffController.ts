@@ -260,3 +260,84 @@ export const cambiarPasswordStaff = async (req: AuthRequest, res: Response): Pro
         });
     }
 };
+
+/**
+ * 6. Eliminar Funcionario / Staff Electoral (Solo ADMIN)
+ * Protege contra auto-eliminación del administrador activo y asienta auditoría inmutable
+ */
+export const eliminarStaff = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const idRaw = req.body.idUsuario || req.body.id || req.params.id;
+        const motivo = (req.body.motivo || 'Eliminación administrativa de funcionario electoral').toString().trim();
+
+        const id = validarUUID(idRaw, 'ID de funcionario');
+
+        // Seguridad: Evitar que un administrador se elimine a sí mismo
+        if (req.usuario?.id === id) {
+            res.status(400).json({
+                success: false,
+                error: 'Seguridad institucional: No puedes eliminar tu propia cuenta activa de administrador.',
+            });
+            return;
+        }
+
+        // Obtener datos completos del staff antes de eliminar
+        const { data: staff, error: queryError } = await censoDb
+            .from('personal_electoral')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (queryError || !staff) {
+            res.status(404).json({ success: false, error: 'Funcionario no encontrado.' });
+            return;
+        }
+
+        // Eliminar de la base de datos
+        const { error: deleteError } = await censoDb
+            .from('personal_electoral')
+            .delete()
+            .eq('id', id);
+
+        if (deleteError) throw deleteError;
+
+        // Registrar exhaustivamente en la bitácora de auditoría
+        const adminNombre = req.usuario?.nombre || 'ADMIN_OFICIAL';
+        const adminRol = req.usuario?.rol || 'ADMIN';
+
+        await registrarAuditoriaStaff(
+            'ELIMINACION_USUARIO_STAFF',
+            `${adminRol}_${adminNombre}`,
+            req,
+            {
+                id_staff_eliminado: staff.id,
+                documento_identidad: staff.documento_identidad,
+                nombre_completo: `${staff.nombres} ${staff.apellidos}`.trim(),
+                cargo: staff.cargo,
+                rol: staff.rol,
+                estado_previo: staff.esta_activo ? 'ACTIVO' : 'INACTIVO',
+                motivo_eliminacion: motivo,
+                eliminado_por: adminNombre,
+                rol_ejecutor: adminRol,
+                fecha_creacion_original: staff.created_at,
+            }
+        );
+
+        res.json({
+            success: true,
+            mensaje: `Funcionario ${staff.nombres} ${staff.apellidos} (${staff.cargo} - ${staff.rol}) eliminado exitosamente. Registro asentado en bitácora de auditoría.`,
+            staffEliminado: {
+                id: staff.id,
+                documento_identidad: staff.documento_identidad,
+                nombre: `${staff.nombres} ${staff.apellidos}`.trim(),
+                rol: staff.rol,
+            },
+        });
+    } catch (err: any) {
+        console.error('Error al eliminar staff:', err);
+        res.status(500).json({
+            success: false,
+            error: err.message || 'Error al eliminar funcionario electoral.',
+        });
+    }
+};

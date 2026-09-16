@@ -534,3 +534,77 @@ export const obtenerEstadoSmtp = async (_req: Request, res: Response): Promise<v
         res.status(500).json({ success: false, error: err.message || 'Error al consultar estado SMTP' });
     }
 };
+
+/**
+ * 7. Eliminar votante del censo electoral (Solo ADMIN)
+ * Registra todos los detalles del votante y el motivo en la bitácora de auditoría inmutable
+ */
+export const eliminarVotante = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const idVotante = req.body.idVotante || req.body.id || req.params.id;
+        const motivo = (req.body.motivo || 'Eliminación administrativa de elector del censo electoral').toString().trim();
+
+        if (!idVotante) {
+            res.status(400).json({ success: false, error: 'ID de votante requerido.' });
+            return;
+        }
+
+        // Obtener la información completa del votante antes de eliminarlo para la auditoría
+        const { data: votante, error: queryError } = await censoDb
+            .from('votantes')
+            .select('*')
+            .eq('id_votante', idVotante)
+            .maybeSingle();
+
+        if (queryError || !votante) {
+            res.status(404).json({ success: false, error: 'Votante no encontrado en el censo electoral.' });
+            return;
+        }
+
+        // Proceder a eliminar de la base de datos del censo
+        const { error: deleteError } = await censoDb
+            .from('votantes')
+            .delete()
+            .eq('id_votante', idVotante);
+
+        if (deleteError) throw deleteError;
+
+        // Registrar exhaustivamente en la bitácora de auditoría
+        const adminNombre = req.usuario?.nombre || 'ADMIN_OFICIAL';
+        const adminRol = req.usuario?.rol || 'ADMIN';
+
+        await registrarAuditoria(
+            'ELIMINACION_VOTANTE',
+            `${adminRol}_${adminNombre}`,
+            req,
+            {
+                id_votante_eliminado: votante.id_votante,
+                documento_identidad: votante.documento_identidad,
+                nombre_completo: `${votante.nombres} ${votante.apellidos}`.trim(),
+                correo_institucional: votante.correo_institucional,
+                estado_habilitado: votante.esta_habilitado,
+                habia_votado: votante.ha_solicitado_token,
+                motivo_eliminacion: motivo,
+                eliminado_por: adminNombre,
+                rol_ejecutor: adminRol,
+                fecha_registro_original: votante.creado_at,
+            }
+        );
+
+        res.json({
+            success: true,
+            mensaje: `Elector ${votante.nombres} ${votante.apellidos} (Doc: ${votante.documento_identidad}) eliminado del censo. Evento registrado en bitácora de auditoría.`,
+            votanteEliminado: {
+                id_votante: votante.id_votante,
+                documento_identidad: votante.documento_identidad,
+                nombre: `${votante.nombres} ${votante.apellidos}`.trim(),
+            },
+        });
+    } catch (err: any) {
+        console.error('Error en eliminarVotante:', err);
+        res.status(500).json({
+            success: false,
+            error: err.message || 'Error al eliminar elector del censo.',
+        });
+    }
+};

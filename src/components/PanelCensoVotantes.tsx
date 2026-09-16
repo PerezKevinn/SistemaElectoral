@@ -19,6 +19,7 @@ import {
     Sparkles,
     AlertTriangle,
     UserCheck,
+    Trash2,
 } from 'lucide-react';
 import { useToast } from './Toast';
 
@@ -86,6 +87,11 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
     });
     const [guardandoIndividual, setGuardandoIndividual] = useState(false);
     const [accionandoId, setAccionandoId] = useState<string | null>(null);
+
+    // Modal y Estado de Eliminación de Votante
+    const [votanteAEliminar, setVotanteAEliminar] = useState<VotanteCenso | null>(null);
+    const [motivoEliminacion, setMotivoEliminacion] = useState('');
+    const [eliminandoVotante, setEliminandoVotante] = useState(false);
 
     const getAuthHeaders = () => {
         const token = localStorage.getItem('auth_token') || sessionStorage.getItem('staff_token');
@@ -354,7 +360,41 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
         }
     };
 
-    // 7. Guardar Elector Individual
+    // 7. Eliminar Elector del Censo con registro en bitácora
+    const handleConfirmarEliminacionVotante = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!votanteAEliminar) return;
+
+        setEliminandoVotante(true);
+        try {
+            const res = await fetch('/api/censo/eliminar', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    idVotante: votanteAEliminar.id_votante,
+                    motivo: motivoEliminacion.trim(),
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Error al eliminar elector del censo');
+            }
+
+            toast.success(
+                `Elector ${votanteAEliminar.nombres} ${votanteAEliminar.apellidos} eliminado del censo electoral.`,
+                'Elector Eliminado de Censo'
+            );
+            setVotanteAEliminar(null);
+            cargarListaVotantes();
+        } catch (err: any) {
+            toast.error(err.message, 'Fallo al Eliminar Elector');
+        } finally {
+            setEliminandoVotante(false);
+        }
+    };
+
+    // 8. Guardar Elector Individual
     const handleGuardarIndividual = async (e: React.FormEvent) => {
         e.preventDefault();
         setGuardandoIndividual(true);
@@ -781,6 +821,17 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
                                                     >
                                                         {v.esta_habilitado ? 'Inhabilitar' : 'Habilitar'}
                                                     </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            setVotanteAEliminar(v);
+                                                            setMotivoEliminacion('Desvinculación del censo electoral oficial por resolución administrativa');
+                                                        }}
+                                                        disabled={accionandoId === v.id_votante}
+                                                        className="p-1.5 bg-slate-900 hover:bg-rose-950/70 text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-800/80 rounded-lg text-xs transition cursor-pointer"
+                                                        title="Eliminar elector del censo (con registro auditado)"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -896,6 +947,96 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
                                         <>
                                             <Send className="w-3.5 h-3.5" />
                                             <span>Guardar y Enviar Credenciales</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL DE CONFIRMACIÓN DE ELIMINACIÓN DE VOTANTE */}
+            {votanteAEliminar && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+                    <div className="max-w-md w-full glass-panel border border-rose-900/80 rounded-2xl p-6 space-y-4 shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <div className="flex items-center gap-2">
+                                <AlertTriangle className="w-5 h-5 text-rose-400" />
+                                <h3 className="text-sm font-bold text-white">Eliminar Elector del Censo</h3>
+                            </div>
+                            <button
+                                onClick={() => setVotanteAEliminar(null)}
+                                className="text-slate-400 hover:text-white transition cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs space-y-1.5">
+                            <div>
+                                <span className="text-slate-500">Documento:</span>{' '}
+                                <strong className="text-white font-mono">{votanteAEliminar.documento_identidad}</strong>
+                            </div>
+                            <div>
+                                <span className="text-slate-500">Elector:</span>{' '}
+                                <strong className="text-slate-200">
+                                    {votanteAEliminar.nombres} {votanteAEliminar.apellidos}
+                                </strong>
+                            </div>
+                            <div>
+                                <span className="text-slate-500">Correo:</span>{' '}
+                                <span className="text-slate-300 font-mono">{votanteAEliminar.correo_institucional}</span>
+                            </div>
+                            <div>
+                                <span className="text-slate-500">Estado Sufragio:</span>{' '}
+                                <span className="text-slate-300 font-medium">
+                                    {votanteAEliminar.ha_solicitado_token ? 'Ya ejerció su voto' : 'Voto no emitido'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="p-3 bg-rose-950/30 border border-rose-900/50 rounded-xl text-[11px] text-rose-300 leading-relaxed">
+                            ⚠️ Esta acción eliminará al elector del censo activo. La operación quedará registrada de forma inmutable en la bitácora de auditoría con su usuario y motivo.
+                        </div>
+
+                        <form onSubmit={handleConfirmarEliminacionVotante} className="space-y-3 text-xs">
+                            <div>
+                                <label className="block text-slate-300 font-semibold mb-1">
+                                    Motivo de Eliminación (Auditoría) *
+                                </label>
+                                <textarea
+                                    required
+                                    rows={3}
+                                    value={motivoEliminacion}
+                                    onChange={(e) => setMotivoEliminacion(e.target.value)}
+                                    placeholder="Indique la justificación para remover este elector del censo..."
+                                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 focus:border-rose-500 rounded-lg text-white outline-none"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                                <button
+                                    type="button"
+                                    onClick={() => setVotanteAEliminar(null)}
+                                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl cursor-pointer transition text-xs font-semibold"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={eliminandoVotante || !motivoEliminacion.trim()}
+                                    className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-semibold rounded-xl cursor-pointer transition text-xs shadow-md shadow-rose-950/60 flex items-center gap-1.5"
+                                >
+                                    {eliminandoVotante ? (
+                                        <>
+                                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                            <span>Eliminando...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                            <span>Confirmar Eliminación</span>
                                         </>
                                     )}
                                 </button>

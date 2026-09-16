@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserPlus, KeyRound, CheckCircle2, XCircle, ArrowLeft, RefreshCw, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Users, UserPlus, KeyRound, CheckCircle2, XCircle, ArrowLeft, RefreshCw, AlertCircle, Eye, EyeOff, Trash2, AlertTriangle } from 'lucide-react';
 import { useToast } from './Toast';
 
 interface StaffUser {
@@ -26,6 +26,22 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
     const [modalPasswordId, setModalPasswordId] = useState<string | null>(null);
     const [nuevaPassword, setNuevaPassword] = useState('');
     const [mostrarPasswordReset, setMostrarPasswordReset] = useState(false);
+
+    // Estado para eliminación auditada de personal
+    const [staffAEliminar, setStaffAEliminar] = useState<StaffUser | null>(null);
+    const [motivoEliminacionStaff, setMotivoEliminacionStaff] = useState('');
+    const [eliminandoStaff, setEliminandoStaff] = useState(false);
+
+    // Obtener id del usuario en sesión activa
+    const currentUserStr = sessionStorage.getItem('staff_user');
+    let currentUserId: string | null = null;
+    try {
+        if (currentUserStr) {
+            currentUserId = JSON.parse(currentUserStr)?.id;
+        }
+    } catch {
+        currentUserId = null;
+    }
 
     // Formulario nuevo usuario
     const [form, setForm] = useState({
@@ -176,6 +192,42 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
         }
     };
 
+    const handleConfirmarEliminacionStaff = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!staffAEliminar) return;
+        if (!motivoEliminacionStaff.trim()) {
+            toast.warning('Debe proporcionar un motivo para la auditoría institucional.', 'Motivo Requerido');
+            return;
+        }
+
+        setEliminandoStaff(true);
+        try {
+            const res = await fetch('/api/urna/staff/eliminar', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    idUsuario: staffAEliminar.id,
+                    motivo: motivoEliminacionStaff.trim()
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'No se pudo eliminar el funcionario.');
+            }
+
+            toast.success(`El funcionario ${staffAEliminar.nombres} ha sido eliminado y registrado en la bitácora.`, 'Funcionario Eliminado');
+            setStaffAEliminar(null);
+            setMotivoEliminacionStaff('');
+            cargarStaff();
+        } catch (err: any) {
+            console.error(err);
+            toast.error(err.message, 'Error al Eliminar Funcionario');
+        } finally {
+            setEliminandoStaff(false);
+        }
+    };
+
     return (
         <div className="w-full max-w-5xl mx-auto glass-panel p-4 sm:p-6 lg:p-8 rounded-2xl shadow-2xl space-y-6">
             {/* Encabezado Responsivo */}
@@ -259,19 +311,30 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
                         <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800/60">
                             <button
                                 onClick={() => setModalPasswordId(usr.id)}
-                                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[11px] rounded-lg transition"
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[11px] rounded-lg transition cursor-pointer"
                             >
                                 <KeyRound className="w-3.5 h-3.5" />
                                 <span>Clave</span>
                             </button>
                             <button
                                 onClick={() => alternarEstado(usr.id, usr.esta_activo)}
-                                className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg transition ${
+                                className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg transition cursor-pointer ${
                                     usr.esta_activo ? 'bg-rose-950/60 text-rose-300 border border-rose-900/60' : 'bg-emerald-950/60 text-emerald-300 border border-emerald-900/60'
                                 }`}
                             >
                                 {usr.esta_activo ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                                 <span>{usr.esta_activo ? 'Desactivar' : 'Activar'}</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setStaffAEliminar(usr);
+                                    setMotivoEliminacionStaff('Desvinculación del cargo y revocación de permisos por decisión administrativa');
+                                }}
+                                disabled={usr.id === currentUserId}
+                                className="p-1.5 bg-slate-900 hover:bg-rose-950/70 text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-800/80 rounded-lg text-xs transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                title={usr.id === currentUserId ? 'No puedes eliminar tu propia cuenta en sesión' : 'Eliminar funcionario (con auditoría)'}
+                            >
+                                <Trash2 className="w-3.5 h-3.5" />
                             </button>
                         </div>
                     </div>
@@ -332,12 +395,23 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
                                     <button
                                         onClick={() => alternarEstado(usr.id, usr.esta_activo)}
                                         className={`p-1.5 rounded-lg transition cursor-pointer ${usr.esta_activo
-                                            ? 'bg-rose-950/60 text-rose-300 hover:bg-rose-900/60 border border-rose-900/40'
+                                            ? 'bg-amber-950/60 text-amber-300 hover:bg-amber-900/60 border border-amber-900/40'
                                             : 'bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/60 border border-emerald-900/40'
                                             }`}
                                         title={usr.esta_activo ? 'Desactivar Usuario' : 'Activar Usuario'}
                                     >
                                         {usr.esta_activo ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setStaffAEliminar(usr);
+                                            setMotivoEliminacionStaff('Desvinculación del cargo y revocación de permisos por decisión administrativa');
+                                        }}
+                                        disabled={usr.id === currentUserId}
+                                        className="p-1.5 bg-slate-900 hover:bg-rose-950/70 text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-800/80 rounded-lg transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                        title={usr.id === currentUserId ? 'No puedes eliminar tu propia cuenta en sesión' : 'Eliminar funcionario (con auditoría)'}
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
                                     </button>
                                 </td>
                             </tr>
@@ -354,7 +428,7 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
                             <h3 className="text-base font-bold text-white">Registrar Nuevo Funcionario</h3>
                             <button
                                 onClick={() => setMostrarModalCrear(false)}
-                                className="text-slate-400 hover:text-white transition"
+                                className="text-slate-400 hover:text-white transition cursor-pointer"
                             >
                                 ✕
                             </button>
@@ -467,7 +541,7 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
                             <h3 className="text-sm font-bold text-white">Cambiar Contraseña de Funcionario</h3>
                             <button
                                 onClick={() => { setModalPasswordId(null); setNuevaPassword(''); setMostrarPasswordReset(false); }}
-                                className="text-slate-400 hover:text-white transition"
+                                className="text-slate-400 hover:text-white transition cursor-pointer"
                             >
                                 ✕
                             </button>
@@ -508,6 +582,98 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
                                     className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold cursor-pointer transition text-xs shadow-md shadow-indigo-950/50"
                                 >
                                     Actualizar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Confirmar Eliminación de Funcionario Staff */}
+            {staffAEliminar && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+                    <div className="max-w-md w-full glass-panel border border-rose-900/80 rounded-2xl p-6 space-y-4 shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <div className="flex items-center gap-2">
+                                <AlertTriangle className="w-5 h-5 text-rose-400" />
+                                <h3 className="text-sm font-bold text-white">Eliminar Funcionario Electoral</h3>
+                            </div>
+                            <button
+                                onClick={() => setStaffAEliminar(null)}
+                                className="text-slate-400 hover:text-white transition cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs space-y-1.5">
+                            <div>
+                                <span className="text-slate-500">Documento:</span>{' '}
+                                <strong className="text-white font-mono">{staffAEliminar.documento_identidad}</strong>
+                            </div>
+                            <div>
+                                <span className="text-slate-500">Funcionario:</span>{' '}
+                                <strong className="text-slate-200">
+                                    {staffAEliminar.nombres} {staffAEliminar.apellidos}
+                                </strong>
+                            </div>
+                            <div>
+                                <span className="text-slate-500">Cargo:</span>{' '}
+                                <span className="text-slate-300">{staffAEliminar.cargo}</span>
+                            </div>
+                            <div>
+                                <span className="text-slate-500">Rol:</span>{' '}
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    staffAEliminar.rol === 'ADMIN' ? 'bg-indigo-950 text-indigo-300 border border-indigo-800/60' : 'bg-cyan-950 text-cyan-300 border border-cyan-800/60'
+                                }`}>
+                                    {staffAEliminar.rol}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="p-3 bg-rose-950/30 border border-rose-900/50 rounded-xl text-[11px] text-rose-300 leading-relaxed">
+                            ⚠️ Esta acción eliminará permanentemente la cuenta del funcionario del personal electoral. La operación quedará registrada de forma inmutable en la bitácora de auditoría con su usuario, fecha y motivo.
+                        </div>
+
+                        <form onSubmit={handleConfirmarEliminacionStaff} className="space-y-3 text-xs">
+                            <div>
+                                <label className="block text-slate-300 font-semibold mb-1">
+                                    Motivo de Eliminación (Auditoría) *
+                                </label>
+                                <textarea
+                                    required
+                                    rows={3}
+                                    value={motivoEliminacionStaff}
+                                    onChange={(e) => setMotivoEliminacionStaff(e.target.value)}
+                                    placeholder="Indique la justificación para remover este funcionario del sistema..."
+                                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 focus:border-rose-500 rounded-lg text-white outline-none"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                                <button
+                                    type="button"
+                                    onClick={() => setStaffAEliminar(null)}
+                                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl cursor-pointer transition text-xs font-semibold"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={eliminandoStaff || !motivoEliminacionStaff.trim()}
+                                    className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-semibold rounded-xl cursor-pointer transition text-xs shadow-md shadow-rose-950/60 flex items-center gap-1.5"
+                                >
+                                    {eliminandoStaff ? (
+                                        <>
+                                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                            <span>Eliminando...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                            <span>Confirmar Eliminación</span>
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </form>

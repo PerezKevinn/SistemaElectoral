@@ -6,6 +6,7 @@ import {
     reenviarCredencialesVotante,
     cambiarEstadoHabilitacion,
     obtenerEstadoSmtp,
+    eliminarVotante,
 } from '../controllers/censoController';
 import {
     crearSolicitudRegistro,
@@ -36,5 +37,7 @@ router.get('/votantes', requireRol(['ADMIN', 'AUDITOR']), listarVotantesCenso);
 router.get('/estado-smtp', requireRol(['ADMIN', 'AUDITOR']), obtenerEstadoSmtp);
 router.post('/reenviar-credencial', requireRol(['ADMIN']), reenviarCredencialesVotante);
 router.post('/estado', requireRol(['ADMIN']), cambiarEstadoHabilitacion);
+router.post('/eliminar', requireRol(['ADMIN']), eliminarVotante);
+router.delete('/:id', requireRol(['ADMIN']), eliminarVotante);
 
 export default router;

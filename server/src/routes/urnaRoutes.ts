@@ -19,6 +19,7 @@ import {
     alternarEstadoStaff,
     cambiarPasswordStaff,
     loginStaff,
+    eliminarStaff,
 } from '../controllers/staffController';
 import { requireRol } from '../middleware/authRole';
 import { voteLimiter, authLimiter } from '../middleware/security';
@@ -47,5 +48,7 @@ router.get('/staff', requireRol(['ADMIN']), listarStaff);
 router.post('/staff/crear', requireRol(['ADMIN']), crearStaff);
 router.post('/staff/estado', requireRol(['ADMIN']), alternarEstadoStaff);
 router.post('/staff/password', requireRol(['ADMIN']), cambiarPasswordStaff);
+router.post('/staff/eliminar', requireRol(['ADMIN']), eliminarStaff);
+router.delete('/staff/:id', requireRol(['ADMIN']), eliminarStaff);
 
 export default router;

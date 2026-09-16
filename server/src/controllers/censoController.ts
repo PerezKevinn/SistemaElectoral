@@ -581,18 +581,34 @@ export const eliminarVotante = async (req: AuthRequest, res: Response): Promise<
                 .eq('documento_identidad', votante.documento_identidad);
 
             if (!errSolQuery && solicitudesPrevias && solicitudesPrevias.length > 0) {
-                const { error: errSolUpdate } = await censoDb
+                let { error: errSolUpdate } = await censoDb
                     .from('solicitudes_registro_votante')
                     .update({
                         estado: 'REVOCADA',
                         motivo_rechazo: `Inscripción revocada por eliminación del elector en el censo electoral oficial. Motivo: ${motivo}`,
-                        revisado_por: `${adminRol}_${adminNombre}`,
+                        revisado_por: adminNombre,
+                        revisado_rol: adminRol,
                         revisado_at: new Date().toISOString(),
-                        actualizado_at: new Date().toISOString(),
                     })
                     .eq('documento_identidad', votante.documento_identidad);
 
-                if (!errSolUpdate) {
+                if (errSolUpdate) {
+                    // Fallback a RECHAZADA si la base de datos tiene la restricción CHECK antigua
+                    const fallbackRes = await censoDb
+                        .from('solicitudes_registro_votante')
+                        .update({
+                            estado: 'RECHAZADA',
+                            motivo_rechazo: `Inscripción revocada por eliminación del elector en el censo electoral oficial. Motivo: ${motivo}`,
+                            revisado_por: adminNombre,
+                            revisado_rol: adminRol,
+                            revisado_at: new Date().toISOString(),
+                        })
+                        .eq('documento_identidad', votante.documento_identidad);
+
+                    if (!fallbackRes.error) {
+                        solicitudesRevocadasCount = solicitudesPrevias.length;
+                    }
+                } else {
                     solicitudesRevocadasCount = solicitudesPrevias.length;
                 }
             }

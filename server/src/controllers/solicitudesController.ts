@@ -165,15 +165,26 @@ export const crearSolicitudRegistro = async (req: Request, res: Response): Promi
 
             if (solicitudDocExistente.estado === 'APROBADA') {
                 // Si la solicitud anterior figuraba APROBADA pero el votante ya no existe en el censo (fue eliminado previamente),
-                // actualizamos la solicitud anterior a REVOCADA para mantener la trazabilidad histórica y permitir su nueva radicación.
-                await censoDb
+                // actualizamos la solicitud anterior a REVOCADA (o RECHAZADA por fallback) para mantener la trazabilidad histórica y permitir su nueva radicación.
+                let { error: errAutoRevoke } = await censoDb
                     .from('solicitudes_registro_votante')
                     .update({
                         estado: 'REVOCADA',
                         motivo_rechazo: 'Inscripción previa revocada tras desvinculación del censo electoral oficial.',
-                        actualizado_at: new Date().toISOString(),
+                        revisado_at: new Date().toISOString(),
                     })
                     .eq('id', solicitudDocExistente.id);
+
+                if (errAutoRevoke) {
+                    await censoDb
+                        .from('solicitudes_registro_votante')
+                        .update({
+                            estado: 'RECHAZADA',
+                            motivo_rechazo: 'Inscripción previa revocada tras desvinculación del censo electoral oficial.',
+                            revisado_at: new Date().toISOString(),
+                        })
+                        .eq('id', solicitudDocExistente.id);
+                }
             }
         }
 

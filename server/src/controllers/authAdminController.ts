@@ -3,16 +3,27 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { censoDb } from '../config/supabase';
 
+const getJwtSecret = (): string => {
+    const secret = process.env.JWT_CHALLENGE_SECRET || process.env.JWT_SECRET;
+    if (!secret || secret.length < 16) {
+        throw new Error('Configuración de seguridad insuficiente: Se requiere JWT_CHALLENGE_SECRET robusto.');
+    }
+    return secret;
+};
+
 export const loginAdmin = async (req: Request, res: Response): Promise<void> => {
     try {
-        const documento = (req.body.documentoIdentidad || req.body.documento || req.body.cedula || '').toString().trim();
-        const password = (req.body.clave || req.body.password || req.body.contrasena || '').toString().trim();
+        const documentoRaw = req.body.documentoIdentidad || req.body.documento || req.body.cedula;
+        const passwordRaw = req.body.clave || req.body.password || req.body.contrasena;
         const rolSolicitado = (req.body.rol || 'ADMIN').toString().trim().toUpperCase();
 
-        if (!documento || !password) {
-            res.status(400).json({ success: false, error: 'Documento y contraseña requeridos' });
+        if (!documentoRaw || !passwordRaw) {
+            res.status(400).json({ success: false, error: 'Documento y contraseña requeridos.' });
             return;
         }
+
+        const documento = String(documentoRaw).trim();
+        const password = String(passwordRaw).trim();
 
         // Consulta en la base de datos del censo
         const { data: funcionario, error } = await censoDb
@@ -48,8 +59,8 @@ export const loginAdmin = async (req: Request, res: Response): Promise<void> => 
                 cargo: funcionario.cargo,
                 rol: funcionario.rol,
             },
-            process.env.JWT_CHALLENGE_SECRET || 'secret_fallback',
-            { expiresIn: '8h' }
+            getJwtSecret(),
+            { expiresIn: '8h', algorithm: 'HS256' }
         );
 
         res.json({

@@ -3,8 +3,11 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { censoDb, urnaDb } from '../config/supabase';
 import { AuthRequest } from '../middleware/authRole';
-import { validarDocumento } from '../middleware/security';
+import { validarDocumento, validarEmail, validarTextoSeguro } from '../middleware/security';
 import { enviarCredencialesVotante } from '../services/emailService';
+
+// Helper para evitar bloqueo del Event Loop en procesos intensivos
+const yieldEventLoop = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
 /**
  * Genera una contraseña aleatoria de alta entropía (10 caracteres)
@@ -98,19 +101,10 @@ export const crearSolicitudRegistro = async (req: Request, res: Response): Promi
         }
 
         const docLimpio = validarDocumento(documento);
-        const correoLimpio = String(correo).trim().toLowerCase();
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-        if (!emailRegex.test(correoLimpio)) {
-            res.status(400).json({
-                success: false,
-                error: `El correo electrónico ingresado no tiene un formato válido: ${correoLimpio}`,
-            });
-            return;
-        }
-
-        const subdirectivaLimpia = subdirectiva ? String(subdirectiva).trim() : 'General';
-        const telefonoLimpio = telefono ? String(telefono).trim() : '';
+        const correoLimpio = validarEmail(correo);
+        const nombreLimpio = validarTextoSeguro(nombreCompleto, 'Nombre Completo', 150);
+        const subdirectivaLimpia = validarTextoSeguro(subdirectiva, 'Subdirectiva', 80) || 'General';
+        const telefonoLimpio = validarTextoSeguro(telefono, 'Teléfono', 25);
 
         // A. VALIDACIÓN ANTI-DUPLICADOS CONTRA EL CENSO OFICIAL
         const { data: votanteDocExistente } = await censoDb
@@ -608,6 +602,11 @@ export const aprobarSolicitudesMasivo = async (req: AuthRequest, res: Response):
             return;
         }
 
+        if (ids.length > 100) {
+            res.status(400).json({ success: false, error: 'Por seguridad del servidor, el límite máximo por lote es de 100 solicitudes.' });
+            return;
+        }
+
         const funcionarioNombre = req.usuario?.nombre || 'OFICIAL_ELECTORAL';
         const funcionarioRol = req.usuario?.rol || 'ADMIN';
 
@@ -620,7 +619,11 @@ export const aprobarSolicitudesMasivo = async (req: AuthRequest, res: Response):
             detallesErrores: [] as Array<{ id: string; error: string }>,
         };
 
-        for (const idSolicitud of ids) {
+        for (let i = 0; i < ids.length; i++) {
+            if (i > 0 && i % 3 === 0) {
+                await yieldEventLoop();
+            }
+            const idSolicitud = ids[i];
             try {
                 const { data: solicitud, error: solError } = await censoDb
                     .from('solicitudes_registro_votante')

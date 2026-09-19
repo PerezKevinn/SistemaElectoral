@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { loginPaso1, cambiarPasswordInicial, loginPaso2Mfa, verificarVotante, obtenerSetupMfa } from '../controllers/authController';
 import { censoDb } from '../config/supabase';
 import { authLimiter, totpLimiter } from '../middleware/security';
+import { requireRol } from '../middleware/authRole';
 
 const router = Router();
 
@@ -11,20 +12,25 @@ router.post('/login-paso1', authLimiter, loginPaso1);
 router.post('/cambiar-password-inicial', authLimiter, cambiarPasswordInicial);
 router.post('/login-paso2', totpLimiter, loginPaso2Mfa);
 router.post('/login-paso2-mfa', totpLimiter, loginPaso2Mfa);
-router.get('/verificar/:documento', verificarVotante);
+router.get('/verificar/:documento', requireRol(['ADMIN', 'AUDITOR']), verificarVotante);
 router.post('/setup-mfa', authLimiter, obtenerSetupMfa);
 
-// Endpoint de prueba / seed (Protegido estrictamente)
+// Endpoint de prueba / seed (Exclusivo para entornos de desarrollo local; bloqueado en producción)
 router.post('/seed-votante', async (req: Request, res: Response): Promise<void> => {
     try {
-        const seedKey = req.headers['x-admin-seed-key'];
-        const seedSecret = process.env.ADMIN_SEED_SECRET || 'SEED_SECRET_DISABLED_IN_PROD';
+        if (process.env.NODE_ENV === 'production') {
+            res.status(404).json({ success: false, error: 'Endpoint no disponible en producción.' });
+            return;
+        }
 
-        // Bloqueo estricto si no coincide la clave administrativa
-        if (!seedKey || seedKey !== seedSecret) {
+        const seedKey = req.headers['x-admin-seed-key'];
+        const seedSecret = process.env.ADMIN_SEED_SECRET;
+
+        // Bloqueo estricto: la variable debe estar configurada y coincidir
+        if (!seedSecret || !seedKey || seedKey !== seedSecret) {
             res.status(403).json({
                 success: false,
-                error: 'Acceso denegado: El aprovisionamiento directo requiere autorización de infraestructura.',
+                error: 'Acceso denegado: Aprovisionamiento directo deshabilitado o no autorizado.',
             });
             return;
         }
@@ -62,7 +68,7 @@ router.post('/seed-votante', async (req: Request, res: Response): Promise<void> 
 
         res.json({
             success: true,
-            message: 'Votante aprovisionado con éxito.',
+            message: 'Votante aprovisionado con éxito en entorno de desarrollo.',
             data,
         });
     } catch (err: any) {

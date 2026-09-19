@@ -72,7 +72,7 @@ function AppContent() {
 
   const cargarTodasElecciones = async () => {
     try {
-      const token = sessionStorage.getItem('staff_token') || localStorage.getItem('auth_token');
+      const token = sessionStorage.getItem('staff_token');
       const res = await fetch('/api/urna/elecciones', {
         headers: {
           'Content-Type': 'application/json',

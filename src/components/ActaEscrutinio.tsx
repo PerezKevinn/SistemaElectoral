@@ -44,7 +44,7 @@ export const ActaEscrutinio: React.FC<ActaEscrutinioProps> = ({ eleccionId, onVo
         setLoading(true);
         setErrorMsg(null);
         try {
-            const token = sessionStorage.getItem('staff_token') || localStorage.getItem('auth_token');
+            const token = sessionStorage.getItem('staff_token');
             const url = eleccionId ? `/api/urna/acta?eleccionId=${eleccionId}` : '/api/urna/acta';
 
             const res = await fetch(url, {

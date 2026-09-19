@@ -31,7 +31,7 @@ app.use(
                 styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
                 fontSrc: ["'self'", 'https://fonts.gstatic.com'],
                 imgSrc: ["'self'", 'data:', 'https:'],
-                connectSrc: ["'self'", 'https://*.supabase.co', 'http://localhost:*', 'http://127.0.0.1:*', 'https://*.vercel.app', 'https://*.onrender.com'],
+                connectSrc: ["'self'", 'https://*.supabase.co', 'http://localhost:*', 'http://127.0.0.1:*'],
             },
         },
         crossOriginEmbedderPolicy: false,
@@ -39,7 +39,7 @@ app.use(
     })
 );
 
-// 2. Configuración de CORS con lista de orígenes permitidos
+// 2. Configuración de CORS con lista de orígenes explícitamente permitidos
 const origenesPermitidos = [
     'http://localhost:5173',
     'http://localhost:3000',
@@ -47,7 +47,8 @@ const origenesPermitidos = [
     'http://127.0.0.1:5173',
     'http://127.0.0.1:4000',
     process.env.CLIENT_URL,
-].filter(Boolean);
+    process.env.FRONTEND_URL,
+].filter(Boolean).map(o => (o as string).trim().replace(/\/$/, ''));
 
 app.use(
     cors({
@@ -55,14 +56,14 @@ app.use(
             // Permitir peticiones sin origen (como Postman, mobile o server-to-server)
             if (!origin) return callback(null, true);
 
-            const esVercel = /^https:\/\/[a-zA-Z0-9\-_.]+\.vercel\.app$/.test(origin);
+            const normalizado = origin.trim().replace(/\/$/, '');
             const esLocalhost = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-            const esPermitido = origenesPermitidos.some(o => o && origin.startsWith(o));
+            const esPermitido = origenesPermitidos.some(o => o && normalizado === o);
 
-            if (esLocalhost || esVercel || esPermitido || process.env.NODE_ENV !== 'production') {
+            if (esPermitido || (esLocalhost && process.env.NODE_ENV !== 'production')) {
                 return callback(null, true);
             }
-            return callback(new Error(`Bloqueado por política CORS: ${origin}`));
+            return callback(new Error(`Bloqueado por política de seguridad CORS: ${origin}`));
         },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],

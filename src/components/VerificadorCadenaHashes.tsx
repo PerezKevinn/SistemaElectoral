@@ -53,7 +53,7 @@ export const VerificadorCadenaHashes: React.FC<VerificadorCadenaProps> = ({ elec
         setErrorMsg(null);
 
         try {
-            const token = sessionStorage.getItem('staff_token') || localStorage.getItem('auth_token');
+            const token = sessionStorage.getItem('staff_token');
             const url = eleccionId ? `/api/urna/auditoria/cadena?eleccionId=${eleccionId}` : '/api/urna/auditoria/cadena';
             const res = await fetch(url, {
                 headers: {

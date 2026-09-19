@@ -60,10 +60,11 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
                 throw new Error('Credenciales institucionales incorrectas o no autorizadas para este perfil.');
             }
 
-            localStorage.setItem('auth_token', data.token);
-            localStorage.setItem('staff_token', data.token);
             sessionStorage.setItem('staff_token', data.token);
             sessionStorage.setItem('staff_user', JSON.stringify(data.usuario));
+            // Limpiar entradas residuales en localStorage
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('staff_token');
 
             onAccesoConcedido(data.usuario.rol, data.usuario, data.token);
         } catch (err: any) {

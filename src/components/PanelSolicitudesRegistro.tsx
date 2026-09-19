@@ -63,7 +63,7 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
     const [accionandoId, setAccionandoId] = useState<string | null>(null);
 
     const getAuthHeaders = () => {
-        const token = localStorage.getItem('auth_token') || sessionStorage.getItem('staff_token');
+        const token = sessionStorage.getItem('staff_token');
         return {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,

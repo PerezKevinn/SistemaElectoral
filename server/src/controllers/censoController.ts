@@ -3,8 +3,11 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { censoDb, urnaDb } from '../config/supabase';
 import { AuthRequest } from '../middleware/authRole';
-import { validarDocumento } from '../middleware/security';
+import { validarDocumento, validarEmail, validarTextoSeguro } from '../middleware/security';
 import { enviarCredencialesVotante, verificarEstadoSmtp, VotanteEmailData } from '../services/emailService';
+
+// Helper para evitar bloqueo del Event Loop en procesos intensivos de CPU
+const yieldEventLoop = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
 /**
  * Genera una contraseña aleatoria de alta entropía (10 caracteres)
@@ -77,8 +80,7 @@ const registrarAuditoria = async (accion: string, ejecutadoPor: string, req: Req
 
 /**
  * 1. Carga masiva de censo electoral desde archivo Excel / JSON
- * Arquitectura Zero-Knowledge: La clave se genera, se cifra en BD y se despacha por correo
- * sin ser expuesta ni almacenada en texto plano.
+ * Blindada contra CPU Starvation y bloqueos de I/O mediante procesamiento en lotes asíncrono
  */
 export const cargarCensoMasivo = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
@@ -92,10 +94,10 @@ export const cargarCensoMasivo = async (req: AuthRequest, res: Response): Promis
             return;
         }
 
-        if (votantes.length > 5000) {
+        if (votantes.length > 500) {
             res.status(400).json({
                 success: false,
-                error: 'El límite máximo por lote es de 5,000 registros.',
+                error: 'Por motivos de rendimiento y estabilidad del servidor, el límite máximo por lote es de 500 registros. Por favor subdivida el archivo.',
             });
             return;
         }
@@ -110,6 +112,11 @@ export const cargarCensoMasivo = async (req: AuthRequest, res: Response): Promis
         };
 
         for (let idx = 0; idx < votantes.length; idx++) {
+            // Ceder control al Event Loop cada 5 iteraciones para evitar congelar Express
+            if (idx > 0 && idx % 5 === 0) {
+                await yieldEventLoop();
+            }
+
             const row = votantes[idx];
             const numFila = idx + 1;
 
@@ -131,19 +138,12 @@ export const cargarCensoMasivo = async (req: AuthRequest, res: Response): Promis
                 }
 
                 const documento = validarDocumento(docRaw);
-                const correo = String(correoRaw).trim().toLowerCase();
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(correo)) {
-                    resultados.fallidos++;
-                    resultados.detallesErrores.push({
-                        fila: numFila,
-                        documento,
-                        error: `Formato de correo inválido: ${correo}`,
-                    });
-                    continue;
-                }
+                const correo = validarEmail(correoRaw);
+                const nombreSanitizado = validarTextoSeguro(nombreRaw, 'Nombre Completo', 150);
+                const subdirectivaSanitizada = validarTextoSeguro(subdirectivaRaw, 'Subdirectiva', 80) || 'General';
+                const telefonoSanitizado = validarTextoSeguro(telefonoRaw, 'Teléfono', 25);
 
-                const { nombres, apellidos } = descomponerNombre(nombreRaw);
+                const { nombres, apellidos } = descomponerNombre(nombreSanitizado);
                 const passwordPlana = generarPasswordSegura();
                 const password_hash = await bcrypt.hash(passwordPlana, 10);
 
@@ -192,11 +192,11 @@ export const cargarCensoMasivo = async (req: AuthRequest, res: Response): Promis
                 // Despachar correo electrónico privado al elector
                 const emailResult = await enviarCredencialesVotante({
                     documento,
-                    nombreCompleto: String(nombreRaw).trim() || `${nombres} ${apellidos}`,
+                    nombreCompleto: nombreSanitizado || `${nombres} ${apellidos}`,
                     correo,
                     passwordPlana,
-                    subdirectiva: String(subdirectivaRaw).trim(),
-                    telefono: String(telefonoRaw).trim(),
+                    subdirectiva: subdirectivaSanitizada,
+                    telefono: telefonoSanitizado,
                 });
 
                 if (emailResult.simulado) {

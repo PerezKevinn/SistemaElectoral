@@ -49,16 +49,55 @@ export const apiGlobalLimiter = rateLimit({
     },
 });
 
-// 5. Utilidades de Sanitización y Validación de Entradas
+// 5. Limitador para consultas públicas (Anti-Scraping / Anti-Enumeración)
+export const publicInquiryLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000, // 10 minutos
+    max: 20, // Máximo 20 consultas por IP en 10 minutos
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        success: false,
+        error: 'Demasiadas consultas de verificación. Por seguridad, espera unos minutos.',
+    },
+});
+
+// 6. Utilidades de Sanitización y Validación de Entradas
 export const validarDocumento = (doc: any): string => {
-    if (!doc || typeof doc !== 'string' && typeof doc !== 'number') {
+    if (!doc || (typeof doc !== 'string' && typeof doc !== 'number')) {
         throw new Error('El documento de identidad es requerido.');
     }
     const limpio = String(doc).trim();
     if (!/^[a-zA-Z0-9.\-_]{4,25}$/.test(limpio)) {
-        throw new Error('El formato del documento de identidad no es válido.');
+        throw new Error('El formato del documento de identidad no es válido (4-25 caracteres alfanuméricos).');
     }
     return limpio;
+};
+
+export const validarEmail = (email: any): string => {
+    if (!email || typeof email !== 'string') {
+        throw new Error('El correo electrónico es requerido.');
+    }
+    const limpio = email.trim().toLowerCase();
+    if (limpio.length > 120) {
+        throw new Error('El correo electrónico no puede exceder los 120 caracteres.');
+    }
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(limpio)) {
+        throw new Error('El formato del correo electrónico no es válido.');
+    }
+    return limpio;
+};
+
+export const validarTextoSeguro = (texto: any, nombreCampo: string = 'Texto', maxLongitud: number = 100): string => {
+    if (!texto || typeof texto !== 'string') {
+        return '';
+    }
+    const limpio = texto.trim();
+    if (limpio.length > maxLongitud) {
+        throw new Error(`${nombreCampo} no puede exceder ${maxLongitud} caracteres.`);
+    }
+    // Eliminar caracteres de control peligrosos
+    return limpio.replace(/[\x00-\x1F\x7F<>]/g, '');
 };
 
 export const validarHexToken = (token: any): string => {
@@ -91,6 +130,9 @@ export const validarPasswordFuerte = (password: any): string => {
     const limpia = password.trim();
     if (limpia.length < 6) {
         throw new Error('La contraseña debe tener como mínimo 6 caracteres.');
+    }
+    if (limpia.length > 128) {
+        throw new Error('La contraseña no puede exceder los 128 caracteres.');
     }
     return limpia;
 };

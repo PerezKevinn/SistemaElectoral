@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { censoDb, urnaDb } from '../config/supabase';
@@ -46,19 +47,23 @@ export const loginStaff = async (req: Request, res: Response): Promise<void> => 
 
         const rolSolicitado = req.body.rol ? String(req.body.rol).trim().toUpperCase() : null;
 
-        // A. AUTENTICACIÓN PRIORITARIA DE SUPER ADMINISTRADOR (IN-MEMORY / SIN TABLA DE STAFF)
-        const superAdminDoc = (process.env.SUPER_ADMIN_DOCUMENTO || 'superadmin').trim();
-        const superAdminPass = (process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin2026!#').trim();
-        const superAdminHash = process.env.SUPER_ADMIN_PASSWORD_HASH;
-        const superAdminNombre = process.env.SUPER_ADMIN_NOMBRE || 'Super Administrador Principal';
-        const superAdminCargo = process.env.SUPER_ADMIN_CARGO || 'Administrador General de Infraestructura';
+        // A. AUTENTICACIÓN PRIORITARIA DE SUPER ADMINISTRADOR (Si está configurado explícitamente en entorno)
+        const superAdminDoc = process.env.SUPER_ADMIN_DOCUMENTO?.trim();
+        const superAdminPass = process.env.SUPER_ADMIN_PASSWORD?.trim();
+        const superAdminHash = process.env.SUPER_ADMIN_PASSWORD_HASH?.trim();
+        const superAdminNombre = process.env.SUPER_ADMIN_NOMBRE?.trim() || 'Super Administrador Principal';
+        const superAdminCargo = process.env.SUPER_ADMIN_CARGO?.trim() || 'Administrador General de Infraestructura';
 
-        if (documento.toLowerCase() === superAdminDoc.toLowerCase()) {
+        if (superAdminDoc && documento.toLowerCase() === superAdminDoc.toLowerCase()) {
             let passwordValida = false;
             if (superAdminHash) {
                 passwordValida = await bcrypt.compare(password, superAdminHash);
-            } else {
-                passwordValida = (password === superAdminPass);
+            } else if (superAdminPass) {
+                // Comparación de tiempo constante
+                passwordValida = crypto.timingSafeEqual(
+                    Buffer.from(password.padEnd(64, ' ')),
+                    Buffer.from(superAdminPass.padEnd(64, ' '))
+                ) && password === superAdminPass;
             }
 
             if (!passwordValida) {

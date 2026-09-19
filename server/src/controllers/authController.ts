@@ -372,7 +372,7 @@ export const loginPaso2Mfa = async (req: Request, res: Response): Promise<void> 
     }
 };
 
-// 3. Verificación de Votante en Censo
+// 3. Verificación de Votante en Censo (Solo para Auditoría / Personal Autorizado)
 export const verificarVotante = async (req: Request, res: Response): Promise<void> => {
     try {
         const { documento } = req.params;
@@ -407,24 +407,42 @@ export const verificarVotante = async (req: Request, res: Response): Promise<voi
     }
 };
 
-// 4. Obtener Setup MFA (Solo para configuración inicial)
+// 4. Obtener Setup MFA (Blindado: Requiere token de desafío firmado)
 export const obtenerSetupMfa = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { documento } = req.body;
-        const docLimpio = validarDocumento(documento);
+        const { challengeToken } = req.body;
 
-        const { data: votante, error } = await censoDb
-            .from('votantes')
-            .select('id_votante, correo_institucional, mfa_secret')
-            .eq('documento_identidad', docLimpio)
-            .single();
-
-        if (error || !votante || !votante.mfa_secret) {
-            res.status(404).json({ success: false, error: 'Votante o configuración 2FA no encontrada.' });
+        if (!challengeToken) {
+            res.status(400).json({ success: false, error: 'Token de desafío de seguridad requerido.' });
             return;
         }
 
-        const otpAuthUri = `otpauth://totp/EleccionesSindicales:${votante.correo_institucional}?secret=${votante.mfa_secret}&issuer=EleccionesSindicales`;
+        let decoded: any;
+        try {
+            decoded = jwt.verify(challengeToken, getJwtSecret(), { algorithms: ['HS256'] });
+        } catch {
+            res.status(401).json({ success: false, error: 'El desafío de seguridad ha expirado o es inválido. Inicia sesión nuevamente.' });
+            return;
+        }
+
+        if (!decoded || !decoded.votanteId || (decoded.type !== 'MFA_CHALLENGE' && decoded.type !== 'FORCE_PASSWORD_CHANGE')) {
+            res.status(403).json({ success: false, error: 'Token de desafío inválido o no autorizado.' });
+            return;
+        }
+
+        const { data: votante, error } = await censoDb
+            .from('votantes')
+            .select('id_votante, correo_institucional, mfa_secret, documento_identidad')
+            .eq('id_votante', decoded.votanteId)
+            .single();
+
+        if (error || !votante || !votante.mfa_secret) {
+            res.status(404).json({ success: false, error: 'Configuración 2FA no encontrada para este elector.' });
+            return;
+        }
+
+        const accountLabel = votante.correo_institucional || votante.documento_identidad;
+        const otpAuthUri = `otpauth://totp/EleccionesSindicales:${accountLabel}?secret=${votante.mfa_secret}&issuer=EleccionesSindicales`;
         const qrDataUrl = await QRCode.toDataURL(otpAuthUri);
 
         res.json({

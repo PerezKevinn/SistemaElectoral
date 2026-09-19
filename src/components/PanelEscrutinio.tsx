@@ -30,7 +30,7 @@ export const PanelEscrutinio: React.FC<PanelEscrutinioProps> = ({ eleccionId, on
         setLoading(true);
         setErrorMsg(null);
         try {
-            const token = sessionStorage.getItem('staff_token') || localStorage.getItem('auth_token');
+            const token = sessionStorage.getItem('staff_token');
             const url = eleccionId ? `/api/urna/resultados?eleccionId=${eleccionId}` : '/api/urna/resultados';
 
             const res = await fetch(url, {

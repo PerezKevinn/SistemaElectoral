@@ -35,7 +35,7 @@ export const PanelAdminCierre: React.FC<PanelAdminCierreProps> = ({
         setErrorMsg(null);
 
         try {
-            const token = sessionStorage.getItem('staff_token') || localStorage.getItem('auth_token');
+            const token = sessionStorage.getItem('staff_token');
             const res = await fetch('/api/urna/cerrar', {
                 method: 'POST',
                 headers: {
@@ -120,7 +120,7 @@ export const PanelAdminCierre: React.FC<PanelAdminCierreProps> = ({
                                 {mostrarClave ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                         </div>
-                        <span className="text-[11px] text-slate-500 mt-1.5 block">Clave de demostración autorizada: <code className="text-slate-400 font-mono">ADMIN_SECRET_2026</code></span>
+                        <span className="text-[11px] text-slate-500 mt-1.5 block">Ingrese la clave de custodia configurada por la mesa de auditoría.</span>
                     </div>
 
                     {errorMsg && (

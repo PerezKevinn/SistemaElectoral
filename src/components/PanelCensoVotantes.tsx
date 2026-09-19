@@ -94,7 +94,7 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
     const [eliminandoVotante, setEliminandoVotante] = useState(false);
 
     const getAuthHeaders = () => {
-        const token = localStorage.getItem('auth_token') || sessionStorage.getItem('staff_token');
+        const token = sessionStorage.getItem('staff_token');
         return {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,

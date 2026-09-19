@@ -39,15 +39,18 @@ app.use(
     })
 );
 
-// 2. Configuración de CORS con lista de orígenes explícitamente permitidos
+// 2. Configuración de CORS con lista de orígenes autorizados
 const origenesPermitidos = [
     'http://localhost:5173',
     'http://localhost:3000',
     'http://localhost:4000',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:4000',
+    'https://sistema-electoral-eight.vercel.app',
+    'https://altumsoftware.solutions',
     process.env.CLIENT_URL,
     process.env.FRONTEND_URL,
+    process.env.APP_URL,
 ].filter(Boolean).map(o => (o as string).trim().replace(/\/$/, ''));
 
 app.use(
@@ -58,9 +61,10 @@ app.use(
 
             const normalizado = origin.trim().replace(/\/$/, '');
             const esLocalhost = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+            const esVercelProyecto = /^https:\/\/sistema-electoral(-[a-zA-Z0-9\-_]+)?\.vercel\.app$/.test(normalizado);
             const esPermitido = origenesPermitidos.some(o => o && normalizado === o);
 
-            if (esPermitido || (esLocalhost && process.env.NODE_ENV !== 'production')) {
+            if (esPermitido || esVercelProyecto || (esLocalhost && process.env.NODE_ENV !== 'production')) {
                 return callback(null, true);
             }
             return callback(new Error(`Bloqueado por política de seguridad CORS: ${origin}`));

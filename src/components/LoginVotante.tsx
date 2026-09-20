@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, User, KeyRound, Copy, Check, Eye, EyeOff, Key, UserPlus } from 'lucide-react';
+import { ShieldCheck, Lock, User, KeyRound, Copy, Check, Eye, EyeOff, Key, UserPlus, Sparkles } from 'lucide-react';
 import { ModalSolicitudRegistro } from './ModalSolicitudRegistro';
+import { ModalVideoTutorial } from './ModalVideoTutorial';
 
 interface LoginVotanteProps {
     onLoginExitoso: (tokenVotacion: string, eleccionActivaId: string) => void;
@@ -12,6 +13,7 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
     const [mostrarPassword, setMostrarPassword] = useState(false);
     const [codigoMfa, setCodigoMfa] = useState('');
     const [modalSolicitudAbierto, setModalSolicitudAbierto] = useState(false);
+    const [modalVideoAbierto, setModalVideoAbierto] = useState(false);
 
     // Estados de cambio obligatorio de contraseña temporal
     const [pasoCambioPassword, setPasoCambioPassword] = useState(false);
@@ -328,7 +330,7 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
                             {loading ? 'Verificando Censo...' : 'Siguiente Paso →'}
                         </button>
 
-                        <div className="pt-2 text-center">
+                        <div className="pt-2 text-center space-y-2.5">
                             <button
                                 type="button"
                                 onClick={() => setModalSolicitudAbierto(true)}
@@ -337,6 +339,17 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
                                 <UserPlus className="w-3.5 h-3.5" />
                                 <span>¿No figura en el censo? Solicite su inscripción oficial aquí</span>
                             </button>
+
+                            <div>
+                                <button
+                                    type="button"
+                                    onClick={() => setModalVideoAbierto(true)}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500/15 via-teal-500/15 to-indigo-500/15 border border-emerald-500/30 hover:border-emerald-400/60 rounded-xl text-xs font-bold text-emerald-300 hover:text-white transition shadow-sm cursor-pointer"
+                                >
+                                    <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                                    <span>🎥 Ver Video Tutorial de Registro y Votación</span>
+                                </button>
+                            </div>
                         </div>
                     </form>
                 ) : (
@@ -421,6 +434,12 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
             <ModalSolicitudRegistro
                 isOpen={modalSolicitudAbierto}
                 onClose={() => setModalSolicitudAbierto(false)}
+            />
+
+            {/* Modal de Video Tutorial Interactivo */}
+            <ModalVideoTutorial
+                isOpen={modalVideoAbierto}
+                onClose={() => setModalVideoAbierto(false)}
             />
         </div>
     );

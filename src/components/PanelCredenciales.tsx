@@ -49,7 +49,7 @@ export const PanelCredenciales: React.FC<PanelCredencialesProps> = ({ onVolver }
         nombres: '',
         apellidos: '',
         cargo: '',
-        rol: 'AUDITOR' as 'AUDITOR',
+        rol: 'AUDITOR' as const,
         password: '',
     });
 

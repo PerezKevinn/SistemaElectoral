@@ -14,6 +14,7 @@ import { PanelCredenciales } from './components/PanelCredenciales';
 import { PanelCensoVotantes } from './components/PanelCensoVotantes';
 import { PanelSolicitudesRegistro } from './components/PanelSolicitudesRegistro';
 import { VerificadorCadenaHashes } from './components/VerificadorCadenaHashes';
+import { ModalVideoTutorial } from './components/ModalVideoTutorial';
 import { ToastProvider } from './components/Toast';
 
 interface EleccionInfo {
@@ -41,6 +42,7 @@ function AppContent() {
   const [rolAutenticado, setRolAutenticado] = useState<Rol | null>(null);
   const [usuarioStaff, setUsuarioStaff] = useState<UsuarioStaff | null>(null);
   const [menuMobileAbierto, setMenuMobileAbierto] = useState<boolean>(false);
+  const [videoTutorialAbierto, setVideoTutorialAbierto] = useState<boolean>(false);
 
   const [pasoVotante, setPasoVotante] = useState<VistaVotante>('LOGIN');
   const [vistaAdmin, setVistaAdmin] = useState<VistaAdmin>('APERTURA');
@@ -233,6 +235,17 @@ function AppContent() {
 
           {/* Desktop & Mobile Actions */}
           <div className="flex items-center gap-2">
+            {/* Botón Video Tutorial Prominente */}
+            <button
+              onClick={() => setVideoTutorialAbierto(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-indigo-500/20 hover:from-emerald-500/30 hover:to-indigo-500/30 text-emerald-300 hover:text-white border border-emerald-500/40 hover:border-emerald-400 text-xs font-bold rounded-xl transition shadow-md shadow-emerald-950/40 cursor-pointer"
+              title="Abrir Video Tutorial Oficial"
+            >
+              <Play className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
+              <span className="hidden sm:inline">Video Tutorial</span>
+              <span className="sm:hidden">Tutorial</span>
+            </button>
+
             {/* Session Actions Desktop */}
             {rolAutenticado && (
               <div className="hidden xl:flex items-center gap-1.5">
@@ -724,6 +737,12 @@ function AppContent() {
           </div>
         </div>
       </footer>
+
+      {/* Modal Video Tutorial Interactivo */}
+      <ModalVideoTutorial
+        isOpen={videoTutorialAbierto}
+        onClose={() => setVideoTutorialAbierto(false)}
+      />
     </div>
   );
 }

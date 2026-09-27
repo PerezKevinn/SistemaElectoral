@@ -693,14 +693,6 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                             </button>
                         </div>
 
-                        {/* Aviso de Privacidad por Diseño */}
-                        <div className="p-3 rounded-xl bg-cyan-950/20 border border-cyan-800/40 flex items-start gap-2 text-xs text-cyan-200">
-                            <Shield className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                            <span>
-                                <strong>Privacidad Protegida:</strong> Los identificadores técnicos crudos (IPs y User-Agent) han sido transformados en métricas de correlación seguras para no exponer información sensible ni vulnerar datos personales.
-                            </span>
-                        </div>
-
                         {/* Ficha de la solicitud actual */}
                         <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs space-y-2">
                             <div className="grid grid-cols-2 gap-2">

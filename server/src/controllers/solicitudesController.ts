@@ -66,6 +66,47 @@ const descomponerNombre = (nombreCompleto: string): { nombres: string; apellidos
 };
 
 /**
+ * Extrae una clasificación amigable y no invasiva del tipo de dispositivo
+ * sin exponer la cadena técnica User-Agent completa (Privacidad por Diseño).
+ */
+export const clasificarDispositivoSeguro = (ua?: string | null): string => {
+    if (!ua || ua === 'Desconocido') return '🌐 Navegador Web';
+    const uaLower = ua.toLowerCase();
+
+    if (uaLower.includes('android')) {
+        return '📱 Celular / Móvil Android';
+    }
+    if (uaLower.includes('iphone')) {
+        return '📱 Celular / iPhone (iOS)';
+    }
+    if (uaLower.includes('ipad')) {
+        return '📱 Tablet iPad';
+    }
+    if (uaLower.includes('windows')) {
+        return '💻 Computador Windows';
+    }
+    if (uaLower.includes('macintosh') || uaLower.includes('mac os')) {
+        return '💻 Computador Mac (macOS)';
+    }
+    if (uaLower.includes('linux') && !uaLower.includes('android')) {
+        return '💻 Computador Linux';
+    }
+    return '📱 Dispositivo Móvil / Web';
+};
+
+export interface AlertaSeguridadDispositivo {
+    tieneAlerta: boolean;
+    esMismoDispositivo: boolean;
+    nivelRiesgo: 'BAJO' | 'MEDIO' | 'ALTO';
+    tipoDispositivo: string;
+    totalCoincidencias: number;
+    radicadosRelacionados: string[];
+    subdirectivasInvolucradas: string[];
+    hayDisparidadGeografica: boolean;
+    mensajesAlerta: string[];
+}
+
+/**
  * Helper para registrar bitácora de auditoría en urnaDb
  */
 const registrarAuditoria = async (accion: string, ejecutadoPor: string, req: Request, detalles: any) => {
@@ -335,25 +376,156 @@ export const consultarEstadoSolicitud = async (req: Request, res: Response): Pro
 
 /**
  * 3. Listar Solicitudes de Registro (ADMIN y AUDITOR)
+ * Incluye correlación de seguridad no invasiva (Privacidad por Diseño)
  */
 export const listarSolicitudes = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const { estado, busqueda, limit = 100 } = req.query;
+        const { estado, busqueda, limit = 200 } = req.query;
 
-        let query = censoDb
+        // 1. Obtener todas las solicitudes registradas para correlación global
+        const { data: todasSolicitudes, error: errorTodas } = await censoDb
             .from('solicitudes_registro_votante')
             .select('*')
             .order('creado_at', { ascending: false })
-            .limit(Number(limit) || 100);
+            .limit(1000);
 
-        if (estado && estado !== 'TODAS' && estado !== 'TODOS') {
-            query = query.eq('estado', String(estado).toUpperCase());
+        if (errorTodas) throw errorTodas;
+
+        const solicitudesRaw = todasSolicitudes || [];
+
+        // 2. Obtener bitácora de auditoría de radicación para complementar telemetría si faltara en la tabla
+        const auditMap = new Map<string, { ip: string; ua: string }>();
+        try {
+            const { data: auditLogs } = await urnaDb
+                .from('logs_auditoria_admin')
+                .select('ejecutado_por, ip_origen, user_agent, detalles')
+                .eq('accion', 'RADICACION_SOLICITUD_VOTANTE')
+                .limit(1000);
+
+            if (auditLogs) {
+                for (const log of auditLogs) {
+                    const doc = log.ejecutado_por ? String(log.ejecutado_por).replace('ELECTOR_', '') : '';
+                    const radicado = log.detalles?.codigo_radicado;
+                    const ip = log.ip_origen || '';
+                    const ua = log.user_agent || '';
+                    if (doc) auditMap.set(doc, { ip, ua });
+                    if (radicado) auditMap.set(radicado, { ip, ua });
+                }
+            }
+        } catch (auditErr) {
+            console.warn('Advertencia obteniendo logs de auditoría para correlación:', auditErr);
         }
 
-        const { data, error } = await query;
-        if (error) throw error;
+        // 3. Normalizar telemetría de cada solicitud
+        const solicitudesConTelemetria = solicitudesRaw.map((s: any) => {
+            const auditInfo = auditMap.get(s.codigo_radicado) || auditMap.get(s.documento_identidad);
+            const ip = (s.ip_origen || auditInfo?.ip || '').trim();
+            const ua = (s.user_agent || auditInfo?.ua || '').trim();
+            return {
+                ...s,
+                _ip: ip,
+                _ua: ua,
+            };
+        });
 
-        let filtradas = data || [];
+        // 4. Agrupar por dispositivo físico y por red
+        // Misma IP + Mismo User-Agent => Mismo dispositivo físico / celular
+        // Misma IP (no localhost) con distinto UA => Misma red WiFi / LAN
+        const gruposDispositivo = new Map<string, any[]>();
+        const gruposRed = new Map<string, any[]>();
+
+        for (const s of solicitudesConTelemetria) {
+            if (s._ip && s._ip !== '127.0.0.1' && s._ip !== '::1') {
+                const keyDispositivo = `${s._ip}_###_${s._ua}`;
+                const listDisp = gruposDispositivo.get(keyDispositivo) || [];
+                listDisp.push(s);
+                gruposDispositivo.set(keyDispositivo, listDisp);
+
+                const keyRed = s._ip;
+                const listRed = gruposRed.get(keyRed) || [];
+                listRed.push(s);
+                gruposRed.set(keyRed, listRed);
+            }
+        }
+
+        // 5. Enriquecer cada solicitud con su análisis de seguridad no invasivo
+        const solicitudesEnriquecidas = solicitudesConTelemetria.map((s: any) => {
+            const keyDispositivo = `${s._ip}_###_${s._ua}`;
+            const coincidentesDispositivo = (s._ip && gruposDispositivo.get(keyDispositivo)) || [];
+            const coincidentesRed = (s._ip && gruposRed.get(s._ip)) || [];
+
+            const esMismoDispositivo = coincidentesDispositivo.length > 1;
+            const esMismaRed = !esMismoDispositivo && coincidentesRed.length > 1;
+
+            const grupoRef = esMismoDispositivo ? coincidentesDispositivo : coincidentesRed;
+            const tieneAlerta = grupoRef.length > 1;
+
+            let nivelRiesgo: 'BAJO' | 'MEDIO' | 'ALTO' = 'BAJO';
+            const tipoDispositivo = clasificarDispositivoSeguro(s._ua);
+            let radicadosRelacionados: string[] = [];
+            let subdirectivasInvolucradas: string[] = [];
+            let hayDisparidadGeografica = false;
+            const mensajesAlerta: string[] = [];
+
+            if (tieneAlerta) {
+                radicadosRelacionados = Array.from(new Set(grupoRef.map((g: any) => g.codigo_radicado)));
+                subdirectivasInvolucradas = Array.from(
+                    new Set(grupoRef.map((g: any) => g.subdirectiva || 'General').filter(Boolean))
+                );
+                hayDisparidadGeografica = subdirectivasInvolucradas.length > 1;
+
+                if (esMismoDispositivo) {
+                    nivelRiesgo = hayDisparidadGeografica || grupoRef.length >= 3 ? 'ALTO' : 'MEDIO';
+                    mensajesAlerta.push(
+                        `${grupoRef.length} solicitudes radicadas desde el mismo dispositivo (${tipoDispositivo}).`
+                    );
+                } else {
+                    nivelRiesgo = hayDisparidadGeografica ? 'ALTO' : 'MEDIO';
+                    mensajesAlerta.push(
+                        `${grupoRef.length} solicitudes radicadas desde la misma red de conexión.`
+                    );
+                }
+
+                if (hayDisparidadGeografica) {
+                    mensajesAlerta.push(
+                        `⚠️ Discrepancia geográfica: Solicitudes pertenecen a subdirectivas distintas (${subdirectivasInvolucradas.join(
+                            ', '
+                        )}).`
+                    );
+                }
+            }
+
+            // Ocultar datos de telemetría crudos del objeto retornado (Protección de Datos / Privacidad)
+            const { _ip, _ua, ...resto } = s;
+
+            return {
+                ...resto,
+                alerta_seguridad: {
+                    tieneAlerta,
+                    esMismoDispositivo,
+                    nivelRiesgo,
+                    tipoDispositivo,
+                    totalCoincidencias: grupoRef.length > 1 ? grupoRef.length : 1,
+                    radicadosRelacionados,
+                    subdirectivasInvolucradas,
+                    hayDisparidadGeografica,
+                    mensajesAlerta,
+                } as AlertaSeguridadDispositivo,
+            };
+        });
+
+        // 6. Aplicar filtros
+        let filtradas = solicitudesEnriquecidas;
+
+        if (estado && estado !== 'TODAS' && estado !== 'TODOS') {
+            const estUpper = String(estado).toUpperCase();
+            if (estUpper === 'CON_ALERTAS' || estUpper === 'ALERTAS') {
+                filtradas = filtradas.filter((s) => s.alerta_seguridad?.tieneAlerta);
+            } else {
+                filtradas = filtradas.filter((s) => s.estado === estUpper);
+            }
+        }
+
         if (busqueda && typeof busqueda === 'string' && busqueda.trim() !== '') {
             const termino = busqueda.trim().toLowerCase();
             filtradas = filtradas.filter(
@@ -363,31 +535,30 @@ export const listarSolicitudes = async (req: AuthRequest, res: Response): Promis
                     s.apellidos?.toLowerCase().includes(termino) ||
                     s.correo?.toLowerCase().includes(termino) ||
                     s.codigo_radicado?.toLowerCase().includes(termino) ||
-                    s.subdirectiva?.toLowerCase().includes(termino)
+                    s.subdirectiva?.toLowerCase().includes(termino) ||
+                    s.alerta_seguridad?.radicadosRelacionados?.some((r: string) => r.toLowerCase().includes(termino))
             );
         }
 
-        // Estadísticas de conteo
-        const { data: statsData } = await censoDb
-            .from('solicitudes_registro_votante')
-            .select('estado');
-
-        const pendientesCount = (statsData || []).filter((s) => s.estado === 'PENDIENTE').length;
-        const aprobadasCount = (statsData || []).filter((s) => s.estado === 'APROBADA').length;
-        const rechazadasCount = (statsData || []).filter((s) => s.estado === 'RECHAZADA').length;
-        const revocadasCount = (statsData || []).filter((s) => s.estado === 'REVOCADA').length;
+        // 7. Estadísticas de conteo
+        const pendientesCount = solicitudesEnriquecidas.filter((s) => s.estado === 'PENDIENTE').length;
+        const aprobadasCount = solicitudesEnriquecidas.filter((s) => s.estado === 'APROBADA').length;
+        const rechazadasCount = solicitudesEnriquecidas.filter((s) => s.estado === 'RECHAZADA').length;
+        const revocadasCount = solicitudesEnriquecidas.filter((s) => s.estado === 'REVOCADA').length;
+        const conAlertasCount = solicitudesEnriquecidas.filter((s) => s.alerta_seguridad?.tieneAlerta).length;
 
         res.json({
             success: true,
             total: filtradas.length,
             metricas: {
-                total: statsData?.length || 0,
+                total: solicitudesEnriquecidas.length,
                 pendientes: pendientesCount,
                 aprobadas: aprobadasCount,
                 rechazadas: rechazadasCount,
                 revocadas: revocadasCount,
+                conAlertas: conAlertasCount,
             },
-            solicitudes: filtradas,
+            solicitudes: filtradas.slice(0, Number(limit) || 200),
         });
     } catch (err: any) {
         console.error('Error en listarSolicitudes:', err);

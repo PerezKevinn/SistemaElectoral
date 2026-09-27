@@ -15,6 +15,18 @@ import {
 } from 'lucide-react';
 import { useToast } from './Toast';
 
+export interface AlertaSeguridadDispositivo {
+    tieneAlerta: boolean;
+    esMismoDispositivo: boolean;
+    nivelRiesgo: 'BAJO' | 'MEDIO' | 'ALTO';
+    tipoDispositivo: string;
+    totalCoincidencias: number;
+    radicadosRelacionados: string[];
+    subdirectivasInvolucradas: string[];
+    hayDisparidadGeografica: boolean;
+    mensajesAlerta: string[];
+}
+
 export interface SolicitudVotante {
     id: string;
     codigo_radicado: string;
@@ -30,6 +42,8 @@ export interface SolicitudVotante {
     revisado_rol?: string | null;
     revisado_at?: string | null;
     ip_origen?: string | null;
+    user_agent?: string | null;
+    alerta_seguridad?: AlertaSeguridadDispositivo;
     creado_at: string;
 }
 
@@ -46,9 +60,12 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
 
     const [solicitudes, setSolicitudes] = useState<SolicitudVotante[]>([]);
     const [cargando, setCargando] = useState(false);
-    const [filtroEstado, setFiltroEstado] = useState<'TODAS' | 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'REVOCADA'>('TODAS');
+    const [filtroEstado, setFiltroEstado] = useState<'TODAS' | 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'REVOCADA' | 'ALERTAS'>('TODAS');
     const [busqueda, setBusqueda] = useState('');
-    const [metricas, setMetricas] = useState({ total: 0, pendientes: 0, aprobadas: 0, rechazadas: 0, revocadas: 0 });
+    const [metricas, setMetricas] = useState({ total: 0, pendientes: 0, aprobadas: 0, rechazadas: 0, revocadas: 0, conAlertas: 0 });
+
+    // Modal de Análisis de Seguridad y Dispositivo Compartido
+    const [solicitudDetalleAlerta, setSolicitudDetalleAlerta] = useState<SolicitudVotante | null>(null);
 
     // Selección múltiple para aprobación masiva
     const [seleccionadas, setSeleccionadas] = useState<string[]>([]);
@@ -277,8 +294,11 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
             </div>
 
             {/* Metricas Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-                <div className="glass-panel p-4 rounded-xl border border-amber-900/40 bg-amber-950/10">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+                <div
+                    onClick={() => setFiltroEstado('PENDIENTE')}
+                    className="glass-panel p-4 rounded-xl border border-amber-900/40 bg-amber-950/10 cursor-pointer hover:border-amber-700/60 transition"
+                >
                     <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-semibold text-amber-300">Pendientes</span>
                         <Clock className="w-4 h-4 text-amber-400" />
@@ -287,7 +307,10 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                     <span className="text-[10px] text-slate-400">Por revisar</span>
                 </div>
 
-                <div className="glass-panel p-4 rounded-xl border border-emerald-900/40 bg-emerald-950/10">
+                <div
+                    onClick={() => setFiltroEstado('APROBADA')}
+                    className="glass-panel p-4 rounded-xl border border-emerald-900/40 bg-emerald-950/10 cursor-pointer hover:border-emerald-700/60 transition"
+                >
                     <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-semibold text-emerald-300">Aprobadas</span>
                         <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -296,7 +319,10 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                     <span className="text-[10px] text-slate-400">En censo</span>
                 </div>
 
-                <div className="glass-panel p-4 rounded-xl border border-rose-900/40 bg-rose-950/10">
+                <div
+                    onClick={() => setFiltroEstado('RECHAZADA')}
+                    className="glass-panel p-4 rounded-xl border border-rose-900/40 bg-rose-950/10 cursor-pointer hover:border-rose-700/60 transition"
+                >
                     <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-semibold text-rose-300">Rechazadas</span>
                         <XCircle className="w-4 h-4 text-rose-400" />
@@ -305,7 +331,10 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                     <span className="text-[10px] text-slate-400">No aprobadas</span>
                 </div>
 
-                <div className="glass-panel p-4 rounded-xl border border-purple-900/40 bg-purple-950/10">
+                <div
+                    onClick={() => setFiltroEstado('REVOCADA')}
+                    className="glass-panel p-4 rounded-xl border border-purple-900/40 bg-purple-950/10 cursor-pointer hover:border-purple-700/60 transition"
+                >
                     <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-semibold text-purple-300">Revocadas</span>
                         <Ban className="w-4 h-4 text-purple-400" />
@@ -314,7 +343,30 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                     <span className="text-[10px] text-slate-400">Desvinculadas</span>
                 </div>
 
-                <div className="glass-panel p-4 rounded-xl border border-slate-700/80 bg-slate-900/40 col-span-2 sm:col-span-1">
+                <div
+                    onClick={() => setFiltroEstado('ALERTAS')}
+                    className={`glass-panel p-4 rounded-xl border cursor-pointer transition ${
+                        (metricas.conAlertas || 0) > 0
+                            ? 'border-amber-600/60 bg-amber-950/30 hover:border-amber-500 shadow-lg shadow-amber-950/40'
+                            : 'border-slate-800 bg-slate-900/30 hover:border-slate-700'
+                    }`}
+                >
+                    <div className="flex items-center justify-between mb-1">
+                        <span className={`text-xs font-semibold ${(metricas.conAlertas || 0) > 0 ? 'text-amber-300' : 'text-slate-400'}`}>
+                            Mismo Celular/Red
+                        </span>
+                        <AlertTriangle className={`w-4 h-4 ${(metricas.conAlertas || 0) > 0 ? 'text-amber-400 animate-pulse' : 'text-slate-500'}`} />
+                    </div>
+                    <div className={`text-2xl font-bold font-mono ${(metricas.conAlertas || 0) > 0 ? 'text-amber-300' : 'text-slate-400'}`}>
+                        {metricas.conAlertas || 0}
+                    </div>
+                    <span className="text-[10px] text-slate-400">Alertas de coincidencia</span>
+                </div>
+
+                <div
+                    onClick={() => setFiltroEstado('TODAS')}
+                    className="glass-panel p-4 rounded-xl border border-slate-700/80 bg-slate-900/40 cursor-pointer hover:border-cyan-700/60 transition"
+                >
                     <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-semibold text-slate-300">Total</span>
                         <Shield className="w-4 h-4 text-cyan-400" />
@@ -342,32 +394,40 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
 
                     {/* Filtros de Estado */}
                     <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-                        {(['TODAS', 'PENDIENTE', 'APROBADA', 'RECHAZADA', 'REVOCADA'] as const).map((est) => (
+                        {(['TODAS', 'PENDIENTE', 'APROBADA', 'RECHAZADA', 'REVOCADA', 'ALERTAS'] as const).map((est) => (
                             <button
                                 key={est}
                                 onClick={() => setFiltroEstado(est)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap ${filtroEstado === est
-                                    ? est === 'PENDIENTE'
-                                        ? 'bg-amber-600 text-white'
-                                        : est === 'APROBADA'
-                                            ? 'bg-emerald-600 text-white'
-                                            : est === 'RECHAZADA'
-                                                ? 'bg-rose-600 text-white'
-                                                : est === 'REVOCADA'
-                                                    ? 'bg-purple-600 text-white'
-                                                    : 'bg-cyan-600 text-white'
-                                    : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
-                                    }`}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                                    filtroEstado === est
+                                        ? est === 'PENDIENTE'
+                                            ? 'bg-amber-600 text-white'
+                                            : est === 'APROBADA'
+                                                ? 'bg-emerald-600 text-white'
+                                                : est === 'RECHAZADA'
+                                                    ? 'bg-rose-600 text-white'
+                                                    : est === 'REVOCADA'
+                                                        ? 'bg-purple-600 text-white'
+                                                        : est === 'ALERTAS'
+                                                            ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-950'
+                                                            : 'bg-cyan-600 text-white'
+                                        : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                                }`}
                             >
-                                {est === 'TODAS'
-                                    ? 'Todas'
-                                    : est === 'PENDIENTE'
-                                        ? 'Pendientes'
-                                        : est === 'APROBADA'
-                                            ? 'Aprobadas'
-                                            : est === 'RECHAZADA'
-                                                ? 'Rechazadas'
-                                                : 'Revocadas'}
+                                {est === 'ALERTAS' && <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />}
+                                <span>
+                                    {est === 'TODAS'
+                                        ? 'Todas'
+                                        : est === 'PENDIENTE'
+                                            ? 'Pendientes'
+                                            : est === 'APROBADA'
+                                                ? 'Aprobadas'
+                                                : est === 'RECHAZADA'
+                                                    ? 'Rechazadas'
+                                                    : est === 'REVOCADA'
+                                                        ? 'Revocadas'
+                                                        : `Alertas (${metricas.conAlertas || 0})`}
+                                </span>
                             </button>
                         ))}
                     </div>
@@ -421,8 +481,9 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                                     return (
                                         <tr
                                             key={sol.id}
-                                            className={`hover:bg-slate-900/40 transition ${estaSeleccionada ? 'bg-cyan-950/20' : ''
-                                                }`}
+                                            className={`hover:bg-slate-900/40 transition ${
+                                                estaSeleccionada ? 'bg-cyan-950/20' : ''
+                                            }`}
                                         >
                                             <td className="p-3">
                                                 {esPendiente && (
@@ -436,8 +497,27 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                                             </td>
 
                                             {/* Radicado */}
-                                            <td className="px-4 py-3 font-mono text-cyan-400 font-bold whitespace-nowrap">
-                                                {sol.codigo_radicado}
+                                            <td className="px-4 py-3 font-mono whitespace-nowrap">
+                                                <div className="flex flex-col gap-1 items-start">
+                                                    <span className="text-cyan-400 font-bold">{sol.codigo_radicado}</span>
+                                                    {sol.alerta_seguridad?.tieneAlerta && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSolicitudDetalleAlerta(sol)}
+                                                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border transition cursor-pointer ${
+                                                                sol.alerta_seguridad.nivelRiesgo === 'ALTO'
+                                                                    ? 'bg-rose-950/90 text-rose-300 border-rose-700/80 hover:bg-rose-900 shadow-sm'
+                                                                    : 'bg-amber-950/90 text-amber-300 border-amber-700/80 hover:bg-amber-900 shadow-sm'
+                                                            }`}
+                                                            title="Haga clic para ver el análisis de dispositivo/red compartida"
+                                                        >
+                                                            <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                                                            <span>
+                                                                {sol.alerta_seguridad.esMismoDispositivo ? 'Mismo Celular' : 'Misma Red'} ({sol.alerta_seguridad.totalCoincidencias})
+                                                            </span>
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </td>
 
                                             {/* Documento */}
@@ -450,11 +530,22 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                                                 <span className="font-semibold text-slate-200 block">
                                                     {sol.nombres} {sol.apellidos}
                                                 </span>
-                                                {sol.telefono && (
-                                                    <span className="text-[10px] text-slate-500 font-mono">
-                                                        Tel: {sol.telefono}
-                                                    </span>
-                                                )}
+                                                <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                                                    {sol.telefono && (
+                                                        <span className="text-[10px] text-slate-500 font-mono">
+                                                            Tel: {sol.telefono}
+                                                        </span>
+                                                    )}
+                                                    {sol.alerta_seguridad?.hayDisparidadGeografica && (
+                                                        <span
+                                                            className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-rose-950/80 text-rose-300 border border-rose-800/60 cursor-pointer"
+                                                            onClick={() => setSolicitudDetalleAlerta(sol)}
+                                                            title="Alerta: Coincide en dispositivo con votante de otra subdirectiva"
+                                                        >
+                                                            📍 Subdirectiva Cruzada
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
 
                                             {/* Correo */}
@@ -566,6 +657,165 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                     </table>
                 </div>
             </div>
+
+            {/* MODAL DE ANÁLISIS DE SEGURIDAD Y DISPOSITIVO COMPARTIDO */}
+            {solicitudDetalleAlerta && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+                    <div className="max-w-lg w-full glass-panel border border-amber-800/70 rounded-2xl p-6 space-y-4 shadow-2xl bg-slate-950/95">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-2 rounded-xl bg-amber-950/80 border border-amber-700/60 text-amber-400">
+                                    <AlertTriangle className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                                        Auditoría de Dispositivo Compartido
+                                        <span
+                                            className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                                                solicitudDetalleAlerta.alerta_seguridad?.nivelRiesgo === 'ALTO'
+                                                    ? 'bg-rose-950 text-rose-300 border border-rose-800'
+                                                    : 'bg-amber-950 text-amber-300 border border-amber-800'
+                                            }`}
+                                        >
+                                            Riesgo {solicitudDetalleAlerta.alerta_seguridad?.nivelRiesgo}
+                                        </span>
+                                    </h3>
+                                    <span className="text-[11px] text-slate-400">
+                                        Evaluación no invasiva de telemetría e integridad
+                                    </span>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSolicitudDetalleAlerta(null)}
+                                className="text-slate-400 hover:text-white transition cursor-pointer p-1"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Aviso de Privacidad por Diseño */}
+                        <div className="p-3 rounded-xl bg-cyan-950/20 border border-cyan-800/40 flex items-start gap-2 text-xs text-cyan-200">
+                            <Shield className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                            <span>
+                                <strong>Privacidad Protegida:</strong> Los identificadores técnicos crudos (IPs y User-Agent) han sido transformados en métricas de correlación seguras para no exponer información sensible ni vulnerar datos personales.
+                            </span>
+                        </div>
+
+                        {/* Ficha de la solicitud actual */}
+                        <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <span className="text-[10px] uppercase font-mono text-slate-500 block">Solicitud Auditada</span>
+                                    <strong className="text-cyan-400 font-mono text-xs">{solicitudDetalleAlerta.codigo_radicado}</strong>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] uppercase font-mono text-slate-500 block">Elector</span>
+                                    <span className="text-slate-200 font-semibold">
+                                        {solicitudDetalleAlerta.nombres} {solicitudDetalleAlerta.apellidos}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] uppercase font-mono text-slate-500 block">Subdirectiva</span>
+                                    <span className="text-white font-mono">{solicitudDetalleAlerta.subdirectiva}</span>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] uppercase font-mono text-slate-500 block">Dispositivo Detectado</span>
+                                    <span className="text-amber-300 font-semibold">
+                                        {solicitudDetalleAlerta.alerta_seguridad?.tipoDispositivo || 'Dispositivo Móvil'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Hallazgos y Coincidencias */}
+                        <div className="space-y-2 text-xs">
+                            <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider font-mono">
+                                Hallazgos de Auditoría:
+                            </span>
+                            <div className="space-y-1.5">
+                                {solicitudDetalleAlerta.alerta_seguridad?.mensajesAlerta?.map((msg, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="p-2.5 rounded-lg bg-amber-950/30 border border-amber-900/40 text-amber-200 flex items-start gap-2 text-xs"
+                                    >
+                                        <span className="text-amber-400 font-bold">•</span>
+                                        <span>{msg}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Radicados Relacionados */}
+                        {solicitudDetalleAlerta.alerta_seguridad?.radicadosRelacionados &&
+                            solicitudDetalleAlerta.alerta_seguridad.radicadosRelacionados.length > 0 && (
+                                <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs space-y-1.5">
+                                    <span className="text-[10px] uppercase font-mono text-slate-400 block font-semibold">
+                                        Radicados que comparten este dispositivo ({solicitudDetalleAlerta.alerta_seguridad.radicadosRelacionados.length}):
+                                    </span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {solicitudDetalleAlerta.alerta_seguridad.radicadosRelacionados.map((rad) => (
+                                            <button
+                                                key={rad}
+                                                type="button"
+                                                onClick={() => {
+                                                    setBusqueda(rad);
+                                                    setSolicitudDetalleAlerta(null);
+                                                    setFiltroEstado('TODAS');
+                                                }}
+                                                className={`px-2 py-1 rounded font-mono text-[11px] border transition cursor-pointer ${
+                                                    rad === solicitudDetalleAlerta.codigo_radicado
+                                                        ? 'bg-cyan-950 text-cyan-300 border-cyan-700 font-bold'
+                                                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                                                }`}
+                                                title="Filtrar por este radicado en la tabla"
+                                            >
+                                                {rad} {rad === solicitudDetalleAlerta.codigo_radicado ? '(Actual)' : '🔍'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                        {/* Recomendación Institucional */}
+                        <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-1">
+                            <span className="text-[10px] uppercase font-mono text-slate-400 font-bold block">
+                                Protocolo Recomendado:
+                            </span>
+                            <p className="text-slate-300 text-[11px] leading-relaxed">
+                                {solicitudDetalleAlerta.alerta_seguridad?.hayDisparidadGeografica
+                                    ? 'Al existir discrepancia entre las sedes/subdirectivas de las solicitudes radicadas desde este celular, verifique telefónicamente o por canal oficial la legitimidad de ambas inscripciones antes de otorgar la aprobación.'
+                                    : 'Verifique que la solicitud no corresponda a un registro indebido por terceros antes de su incorporación al censo electoral.'}
+                            </p>
+                        </div>
+
+                        {/* Botones de Acción */}
+                        <div className="flex gap-2 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const relacionados = solicitudDetalleAlerta.alerta_seguridad?.radicadosRelacionados || [];
+                                    if (relacionados.length > 0) {
+                                        setBusqueda(relacionados[0]);
+                                    }
+                                    setFiltroEstado('TODAS');
+                                    setSolicitudDetalleAlerta(null);
+                                }}
+                                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-white transition cursor-pointer flex items-center justify-center gap-1.5"
+                            >
+                                <Search className="w-3.5 h-3.5 text-cyan-400" />
+                                <span>Ver Solicitudes Relacionadas</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setSolicitudDetalleAlerta(null)}
+                                className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 rounded-xl text-xs font-semibold text-white transition cursor-pointer shadow-lg shadow-cyan-950/60"
+                            >
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* MODAL DE RECHAZO CON MOTIVO */}
             {solicitudARechazar && (

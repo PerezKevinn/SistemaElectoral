@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut, ShieldCheck, Play, BarChart3, Lock, FileText, Activity, Users, Menu, X, User, UserCheck } from 'lucide-react';
+import { LogOut, ShieldCheck, Play, BarChart3, Lock, FileText, Activity, Users, Menu, X, User, UserCheck, PictureInPicture2 } from 'lucide-react';
 import { LoginRol } from './components/LoginRol';
 import { LoginVotante } from './components/LoginVotante';
 import { CabinaVotacion, type Candidato } from './components/CabinaVotacion';
@@ -14,7 +14,7 @@ import { PanelCredenciales } from './components/PanelCredenciales';
 import { PanelCensoVotantes } from './components/PanelCensoVotantes';
 import { PanelSolicitudesRegistro } from './components/PanelSolicitudesRegistro';
 import { VerificadorCadenaHashes } from './components/VerificadorCadenaHashes';
-import { ModalVideoTutorial } from './components/ModalVideoTutorial';
+import { ModalVideoTutorial, type ModoTutorial } from './components/ModalVideoTutorial';
 import { ToastProvider } from './components/Toast';
 
 interface EleccionInfo {
@@ -43,6 +43,14 @@ function AppContent() {
   const [usuarioStaff, setUsuarioStaff] = useState<UsuarioStaff | null>(null);
   const [menuMobileAbierto, setMenuMobileAbierto] = useState<boolean>(false);
   const [videoTutorialAbierto, setVideoTutorialAbierto] = useState<boolean>(false);
+  const [tutorialModo, setTutorialModo] = useState<ModoTutorial>('MODAL');
+  const [tutorialPasoInicial, setTutorialPasoInicial] = useState<number>(0);
+
+  const handleAbrirTutorial = (modo: ModoTutorial = 'MODAL', pasoIndex: number = 0) => {
+    setTutorialModo(modo);
+    setTutorialPasoInicial(pasoIndex);
+    setVideoTutorialAbierto(true);
+  };
 
   const [pasoVotante, setPasoVotante] = useState<VistaVotante>('LOGIN');
   const [vistaAdmin, setVistaAdmin] = useState<VistaAdmin>('APERTURA');
@@ -235,16 +243,27 @@ function AppContent() {
 
           {/* Desktop & Mobile Actions */}
           <div className="flex items-center gap-2">
-            {/* Botón Video Tutorial Prominente */}
-            <button
-              onClick={() => setVideoTutorialAbierto(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-indigo-500/20 hover:from-emerald-500/30 hover:to-indigo-500/30 text-emerald-300 hover:text-white border border-emerald-500/40 hover:border-emerald-400 text-xs font-bold rounded-xl transition shadow-md shadow-emerald-950/40 cursor-pointer"
-              title="Abrir Video Tutorial Oficial"
-            >
-              <Play className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
-              <span className="hidden sm:inline">Video Tutorial</span>
-              <span className="sm:hidden">Tutorial</span>
-            </button>
+            {/* Botones Video Tutorial & Seguir en Paralelo */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => handleAbrirTutorial('MODAL', 0)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-indigo-500/20 hover:from-emerald-500/30 hover:to-indigo-500/30 text-emerald-300 hover:text-white border border-emerald-500/40 hover:border-emerald-400 text-xs font-bold rounded-xl transition shadow-md shadow-emerald-950/40 cursor-pointer"
+                title="Abrir Video Tutorial Oficial"
+              >
+                <Play className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
+                <span className="hidden sm:inline">Video Tutorial</span>
+                <span className="sm:hidden">Tutorial</span>
+              </button>
+
+              <button
+                onClick={() => handleAbrirTutorial('PIP', 0)}
+                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-emerald-300 border border-slate-800 hover:border-emerald-500/40 text-xs font-medium rounded-xl transition cursor-pointer"
+                title="Abrir tutorial en ventana flotante para seguir paso a paso mientras votas"
+              >
+                <PictureInPicture2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>En Paralelo</span>
+              </button>
+            </div>
 
             {/* Session Actions Desktop */}
             {rolAutenticado && (
@@ -592,7 +611,12 @@ function AppContent() {
         {/* MÓDULO VOTANTE */}
         {rolAutenticado === 'VOTANTE' && (
           <div className="w-full">
-            {pasoVotante === 'LOGIN' && <LoginVotante onLoginExitoso={handleLoginExitoso} />}
+            {pasoVotante === 'LOGIN' && (
+              <LoginVotante
+                onLoginExitoso={handleLoginExitoso}
+                onAbrirTutorial={handleAbrirTutorial}
+              />
+            )}
             {pasoVotante === 'CABINA' && tokenVotacion && (
               loadingCandidatos ? (
                 <div className="glass-panel max-w-md mx-auto p-8 rounded-2xl text-center space-y-3">
@@ -606,6 +630,7 @@ function AppContent() {
                   candidatos={candidatos}
                   tokenVotacion={tokenVotacion}
                   onVotoCompletado={handleVotoCompletado}
+                  onAbrirTutorial={handleAbrirTutorial}
                 />
               )
             )}
@@ -738,10 +763,12 @@ function AppContent() {
         </div>
       </footer>
 
-      {/* Modal Video Tutorial Interactivo */}
+      {/* Modal Video Tutorial Interactivo con soporte en Paralelo (PiP / Modal / Split) */}
       <ModalVideoTutorial
         isOpen={videoTutorialAbierto}
         onClose={() => setVideoTutorialAbierto(false)}
+        initialMode={tutorialModo}
+        initialSceneIndex={tutorialPasoInicial}
       />
     </div>
   );

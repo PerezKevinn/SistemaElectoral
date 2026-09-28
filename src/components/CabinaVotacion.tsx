@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Vote, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Vote, CheckCircle2, AlertCircle, PictureInPicture2 } from 'lucide-react';
+import type { ModoTutorial } from './ModalVideoTutorial';
 
 export interface Candidato {
     id: string;
@@ -13,6 +14,7 @@ interface CabinaVotacionProps {
     candidatos: Candidato[];
     tokenVotacion: string;
     onVotoCompletado: (comprobanteHash: string) => void;
+    onAbrirTutorial?: (modo?: ModoTutorial, pasoIndex?: number) => void;
 }
 
 export const CabinaVotacion: React.FC<CabinaVotacionProps> = ({
@@ -20,6 +22,7 @@ export const CabinaVotacion: React.FC<CabinaVotacionProps> = ({
     candidatos,
     tokenVotacion,
     onVotoCompletado,
+    onAbrirTutorial,
 }) => {
     const [candidatoSeleccionado, setCandidatoSeleccionado] = useState<string | null>(null);
     const [confirmando, setConfirmando] = useState(false);
@@ -60,16 +63,30 @@ export const CabinaVotacion: React.FC<CabinaVotacionProps> = ({
     return (
         <div className="w-full max-w-3xl mx-auto glass-panel p-4 sm:p-6 lg:p-8 rounded-2xl shadow-2xl space-y-6">
             <div className="border-b border-slate-800/80 pb-5">
-                <div className="flex items-center space-x-3 mb-1">
-                    <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
-                        <Vote className="w-6 h-6" />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center space-x-3">
+                        <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 shrink-0">
+                            <Vote className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">Cabina de Votación Anónima</h2>
+                            <p className="text-xs text-slate-400">
+                                Selecciona tu candidato. Tu voto se enviará asociado a tu token ciego sin registrar tu identidad.
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">Cabina de Votación Anónima</h2>
-                        <p className="text-xs text-slate-400">
-                            Selecciona tu candidato. Tu voto se enviará asociado a tu token ciego sin registrar tu identidad.
-                        </p>
-                    </div>
+
+                    {onAbrirTutorial && (
+                        <button
+                            type="button"
+                            onClick={() => onAbrirTutorial('PIP', 6)}
+                            className="self-start sm:self-center text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 bg-emerald-950/40 px-3 py-1.5 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 cursor-pointer transition shadow-sm shrink-0"
+                            title="Ver guía de cómo votar en paralelo"
+                        >
+                            <PictureInPicture2 className="w-3.5 h-3.5" />
+                            <span>Guía en Paralelo</span>
+                        </button>
+                    )}
                 </div>
             </div>
 

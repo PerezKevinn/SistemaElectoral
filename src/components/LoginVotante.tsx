@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, User, KeyRound, Copy, Check, Eye, EyeOff, Key, UserPlus, Sparkles } from 'lucide-react';
+import { ShieldCheck, Lock, User, KeyRound, Copy, Check, Eye, EyeOff, Key, UserPlus, Sparkles, PictureInPicture2, HelpCircle } from 'lucide-react';
 import { ModalSolicitudRegistro } from './ModalSolicitudRegistro';
-import { ModalVideoTutorial } from './ModalVideoTutorial';
+import { ModalVideoTutorial, type ModoTutorial } from './ModalVideoTutorial';
 
 interface LoginVotanteProps {
     onLoginExitoso: (tokenVotacion: string, eleccionActivaId: string) => void;
+    onAbrirTutorial?: (modo?: ModoTutorial, pasoIndex?: number) => void;
 }
 
-export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) => {
+export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso, onAbrirTutorial }) => {
     const [documento, setDocumento] = useState('');
     const [password, setPassword] = useState('');
     const [mostrarPassword, setMostrarPassword] = useState(false);
     const [codigoMfa, setCodigoMfa] = useState('');
     const [modalSolicitudAbierto, setModalSolicitudAbierto] = useState(false);
-    const [modalVideoAbierto, setModalVideoAbierto] = useState(false);
+    const [modalVideoLocal, setModalVideoLocal] = useState(false);
+    const [modoLocal, setModoLocal] = useState<ModoTutorial>('MODAL');
+    const [pasoIndexLocal, setPasoIndexLocal] = useState<number>(0);
 
     // Estados de cambio obligatorio de contraseña temporal
     const [pasoCambioPassword, setPasoCambioPassword] = useState(false);
@@ -32,6 +35,16 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
 
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+    const dispararTutorial = (modo: ModoTutorial = 'MODAL', pasoIdx: number = 0) => {
+        if (onAbrirTutorial) {
+            onAbrirTutorial(modo, pasoIdx);
+        } else {
+            setModoLocal(modo);
+            setPasoIndexLocal(pasoIdx);
+            setModalVideoLocal(true);
+        }
+    };
 
     const handleValidarCredenciales = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -168,7 +181,7 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
 
     return (
         <div className="min-h-[85vh] flex items-center justify-center p-4">
-            <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-2xl p-8 shadow-2xl backdrop-blur">
+            <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur">
                 <div className="text-center mb-6">
                     <div className="w-14 h-14 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-emerald-400">
                         <ShieldCheck className="w-8 h-8" />
@@ -200,6 +213,22 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
                             </div>
                         </div>
 
+                        {/* Asistente en paralelo para cambio de clave */}
+                        <div className="flex items-center justify-between p-2 bg-slate-950 rounded-xl border border-slate-800">
+                            <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
+                                <HelpCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                <span>¿Dudas con este paso?</span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => dispararTutorial('PIP', 2)}
+                                className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 bg-amber-950/40 px-2 py-1 rounded-lg border border-amber-500/30 cursor-pointer transition"
+                            >
+                                <PictureInPicture2 className="w-3 h-3" />
+                                <span>Ver en Paralelo</span>
+                            </button>
+                        </div>
+
                         <div>
                             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
                                 Nueva Contraseña Personal
@@ -218,9 +247,7 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
                                 <button
                                     type="button"
                                     onClick={() => setMostrarNuevaPassword(!mostrarNuevaPassword)}
-                                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition focus:outline-none cursor-pointer"
-                                    title={mostrarNuevaPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                                    aria-label={mostrarNuevaPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                    className="absolute right-3.5 top-3.5 text-slate-500 hover:text-slate-300 transition cursor-pointer"
                                 >
                                     {mostrarNuevaPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
@@ -245,53 +272,36 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
                                 <button
                                     type="button"
                                     onClick={() => setMostrarConfirmarPassword(!mostrarConfirmarPassword)}
-                                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition focus:outline-none cursor-pointer"
-                                    title={mostrarConfirmarPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                                    aria-label={mostrarConfirmarPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                    className="absolute right-3.5 top-3.5 text-slate-500 hover:text-slate-300 transition cursor-pointer"
                                 >
                                     {mostrarConfirmarPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
                             </div>
                         </div>
 
-                        <div className="flex gap-3 pt-2">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setPasoCambioPassword(false);
-                                    setResetPasswordToken(null);
-                                    setNuevaPassword('');
-                                    setConfirmarPassword('');
-                                }}
-                                disabled={loading}
-                                className="w-1/3 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg text-xs transition cursor-pointer"
-                            >
-                                ← Cancelar
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={loading || !nuevaPassword || !confirmarPassword}
-                                className="w-2/3 py-3 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-800 text-white font-semibold rounded-lg text-xs transition shadow-lg shadow-amber-900/20 cursor-pointer disabled:cursor-not-allowed"
-                            >
-                                {loading ? 'Actualizando...' : 'Guardar y Continuar →'}
-                            </button>
-                        </div>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full py-3 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-800 text-white font-semibold rounded-lg text-sm transition shadow-lg shadow-amber-900/20 cursor-pointer disabled:cursor-not-allowed"
+                        >
+                            {loading ? 'Guardando nueva clave...' : 'Guardar Clave y Continuar →'}
+                        </button>
                     </form>
                 ) : !pasoMfa ? (
-                    <form onSubmit={handleValidarCredenciales} className="space-y-5">
+                    <form onSubmit={handleValidarCredenciales} className="space-y-4">
                         <div>
                             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
                                 Documento de Identidad
                             </label>
                             <div className="relative">
-                                <User className="w-5 h-5 text-slate-500 absolute left-3.5 top-3.5" />
+                                <User className="w-5 h-5 text-slate-500 absolute left-3.5 top-3.5 pointer-events-none" />
                                 <input
                                     type="text"
                                     required
                                     value={documento}
                                     onChange={(e) => setDocumento(e.target.value)}
-                                    placeholder="Ej. 1098765432"
-                                    className="w-full pl-11 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500 transition"
+                                    placeholder="Ej: 1098765432"
+                                    className="w-full pl-11 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500 transition font-mono"
                                 />
                             </div>
                         </div>
@@ -307,15 +317,13 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••••••"
-                                    className="w-full pl-11 pr-11 py-3 bg-slate-950 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500 transition font-mono"
+                                    placeholder="••••••••"
+                                    className="w-full pl-11 pr-11 py-3 bg-slate-950 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500 transition"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setMostrarPassword(!mostrarPassword)}
-                                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition focus:outline-none cursor-pointer"
-                                    title={mostrarPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                                    aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                    className="absolute right-3.5 top-3.5 text-slate-500 hover:text-slate-300 transition cursor-pointer"
                                 >
                                     {mostrarPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
@@ -330,7 +338,7 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
                             {loading ? 'Verificando Censo...' : 'Siguiente Paso →'}
                         </button>
 
-                        <div className="pt-2 text-center space-y-2.5">
+                        <div className="pt-2 text-center space-y-3">
                             <button
                                 type="button"
                                 onClick={() => setModalSolicitudAbierto(true)}
@@ -340,20 +348,47 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
                                 <span>¿No figura en el censo? Solicite su inscripción oficial aquí</span>
                             </button>
 
-                            <div>
+                            {/* Opciones de Tutorial: Modal Grande y Modo Paralelo */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                                 <button
                                     type="button"
-                                    onClick={() => setModalVideoAbierto(true)}
-                                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500/15 via-teal-500/15 to-indigo-500/15 border border-emerald-500/30 hover:border-emerald-400/60 rounded-xl text-xs font-bold text-emerald-300 hover:text-white transition shadow-sm cursor-pointer"
+                                    onClick={() => dispararTutorial('MODAL', 0)}
+                                    className="py-2 px-3 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                                 >
-                                    <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-                                    <span>🎥 Ver Video Tutorial de Registro y Votación</span>
+                                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                                    <span>Ver Tutorial</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => dispararTutorial('PIP', 0)}
+                                    className="py-2 px-3 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 border border-emerald-500/40 rounded-xl text-xs font-bold text-emerald-300 hover:text-white transition flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-950/40 cursor-pointer"
+                                    title="Abre una ventana flotante para ver el tutorial mientras escribes tus datos"
+                                >
+                                    <PictureInPicture2 className="w-3.5 h-3.5 text-emerald-400" />
+                                    <span>Seguir en Paralelo</span>
                                 </button>
                             </div>
                         </div>
                     </form>
                 ) : (
-                    <form onSubmit={handleValidarMfa} className="space-y-5">
+                    <form onSubmit={handleValidarMfa} className="space-y-4">
+                        {/* Asistente en paralelo para Authenticator */}
+                        <div className="flex items-center justify-between p-2 bg-slate-950 rounded-xl border border-slate-800">
+                            <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
+                                <HelpCircle className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                                <span>¿Cómo usar Google Authenticator?</span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => dispararTutorial('PIP', 3)}
+                                className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 bg-purple-950/40 px-2 py-1 rounded-lg border border-purple-500/30 cursor-pointer transition"
+                            >
+                                <PictureInPicture2 className="w-3 h-3" />
+                                <span>Ver en Paralelo</span>
+                            </button>
+                        </div>
+
                         {qrCodeData && (
                             <div className="flex flex-col items-center p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
                                 <div className="p-2 bg-white rounded-lg shadow">
@@ -434,13 +469,18 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso }) =>
             <ModalSolicitudRegistro
                 isOpen={modalSolicitudAbierto}
                 onClose={() => setModalSolicitudAbierto(false)}
+                onAbrirTutorial={dispararTutorial}
             />
 
-            {/* Modal de Video Tutorial Interactivo */}
-            <ModalVideoTutorial
-                isOpen={modalVideoAbierto}
-                onClose={() => setModalVideoAbierto(false)}
-            />
+            {/* Fallback si no se pasa onAbrirTutorial desde App */}
+            {!onAbrirTutorial && (
+                <ModalVideoTutorial
+                    isOpen={modalVideoLocal}
+                    onClose={() => setModalVideoLocal(false)}
+                    initialMode={modoLocal}
+                    initialSceneIndex={pasoIndexLocal}
+                />
+            )}
         </div>
     );
 };

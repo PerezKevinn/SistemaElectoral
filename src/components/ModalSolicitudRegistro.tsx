@@ -16,15 +16,18 @@ import {
     Building2,
     FileText,
     Ban,
+    PictureInPicture2,
 } from 'lucide-react';
 import { useToast } from './Toast';
+import type { ModoTutorial } from './ModalVideoTutorial';
 
 interface ModalSolicitudRegistroProps {
     isOpen: boolean;
     onClose: () => void;
+    onAbrirTutorial?: (modo?: ModoTutorial, pasoIndex?: number) => void;
 }
 
-export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ isOpen, onClose }) => {
+export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ isOpen, onClose, onAbrirTutorial }) => {
     const toast = useToast();
     const [pestaña, setPestaña] = useState<'NUEVA' | 'CONSULTAR'>('NUEVA');
 
@@ -308,6 +311,22 @@ export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ 
                         ) : (
                             /* Formulario con los mismos 5 campos estipulados */
                             <form onSubmit={handleEnviarSolicitud} className="space-y-3.5 text-xs">
+                                {onAbrirTutorial && (
+                                    <div className="flex items-center justify-between p-2 bg-slate-950/80 rounded-xl border border-slate-800">
+                                        <span className="text-[11px] text-slate-300">
+                                            💡 ¿Dudas sobre cómo solicitar tu censo?
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => onAbrirTutorial('PIP', 1)}
+                                            className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 bg-emerald-950/40 px-2 py-1 rounded-lg border border-emerald-500/30 cursor-pointer transition"
+                                        >
+                                            <PictureInPicture2 className="w-3 h-3" />
+                                            <span>Ver en Paralelo</span>
+                                        </button>
+                                    </div>
+                                )}
+
                                 <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] text-slate-400 leading-relaxed">
                                     Diligencie sus datos oficiales tal como figuran en su documento. El sistema validará que no exista una solicitud o registro previo.
                                 </div>

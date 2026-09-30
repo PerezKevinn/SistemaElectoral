@@ -17,9 +17,12 @@ import {
     FileText,
     Ban,
     PictureInPicture2,
+    Scale,
+    ExternalLink,
 } from 'lucide-react';
 import { useToast } from './Toast';
 import type { ModoTutorial } from './ModalVideoTutorial';
+import { ModalPoliticaPrivacidad } from './ModalPoliticaPrivacidad';
 
 interface ModalSolicitudRegistroProps {
     isOpen: boolean;
@@ -40,6 +43,8 @@ export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ 
         telefono: '',
     });
 
+    const [aceptaHabeasData, setAceptaHabeasData] = useState(false);
+    const [modalPoliticaAbierto, setModalPoliticaAbierto] = useState(false);
     const [enviando, setEnviando] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [solicitudExitosa, setSolicitudExitosa] = useState<{
@@ -80,6 +85,13 @@ export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ 
     const handleEnviarSolicitud = async (e: React.FormEvent) => {
         e.preventDefault();
         setErrorMsg(null);
+
+        if (!aceptaHabeasData) {
+            setErrorMsg('Debe autorizar el tratamiento de datos personales para radicar la solicitud.');
+            toast.warning('Por favor marque la casilla de autorización de datos personales (Habeas Data).');
+            return;
+        }
+
         setEnviando(true);
 
         try {
@@ -92,6 +104,7 @@ export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ 
                     correo: form.correo.trim().toLowerCase(),
                     subdirectiva: form.subdirectiva.trim(),
                     telefono: form.telefono.trim(),
+                    aceptaTratamientoDatos: true,
                 }),
             });
 
@@ -418,6 +431,39 @@ export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ 
                                     </div>
                                 </div>
 
+                                {/* Cláusula Legal de Consentimiento Habeas Data (Ley 1581 de 2012) */}
+                                <div className="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2.5">
+                                    <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={aceptaHabeasData}
+                                            onChange={(e) => {
+                                                setAceptaHabeasData(e.target.checked);
+                                                if (errorMsg?.includes('autorizar')) setErrorMsg(null);
+                                            }}
+                                            className="mt-0.5 w-4 h-4 rounded bg-slate-900 border-slate-700 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-slate-950 cursor-pointer"
+                                        />
+                                        <span className="text-[11px] text-slate-300 leading-relaxed">
+                                            <strong>Autorizo de manera previa, expresa e informada</strong> el tratamiento de mis datos personales y de filiación sindical para efectos exclusivos de mi validación en el censo electoral y recepción de credenciales seguras.
+                                        </span>
+                                    </label>
+
+                                    <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-[10px] text-slate-400">
+                                        <span className="flex items-center gap-1">
+                                            <Scale className="w-3 h-3 text-indigo-400" />
+                                            <span>Protegido bajo Ley 1581 de 2012</span>
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setModalPoliticaAbierto(true)}
+                                            className="text-indigo-400 hover:text-indigo-300 font-semibold underline flex items-center gap-1 cursor-pointer"
+                                        >
+                                            <span>Ver Política de Privacidad</span>
+                                            <ExternalLink className="w-2.5 h-2.5" />
+                                        </button>
+                                    </div>
+                                </div>
+
                                 {errorMsg && (
                                     <div className="p-3 bg-rose-950/60 border border-rose-800/80 rounded-xl flex items-start gap-2 text-rose-300 text-xs">
                                         <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -425,7 +471,7 @@ export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ 
                                     </div>
                                 )}
 
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button
                                         type="submit"
                                         disabled={enviando}
@@ -617,9 +663,22 @@ export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ 
                         <Shield className="w-3.5 h-3.5 text-slate-400" />
                         <span>Tribunal Electoral Autónomo</span>
                     </div>
-                    <span>Auditoría Continua</span>
+                    <button
+                        type="button"
+                        onClick={() => setModalPoliticaAbierto(true)}
+                        className="text-slate-400 hover:text-indigo-400 transition cursor-pointer flex items-center gap-1"
+                    >
+                        <Scale className="w-3 h-3" />
+                        <span>Habeas Data & Privacidad</span>
+                    </button>
                 </div>
             </div>
+
+            {/* Modal de Política de Privacidad y Tratamiento de Datos */}
+            <ModalPoliticaPrivacidad
+                isOpen={modalPoliticaAbierto}
+                onClose={() => setModalPoliticaAbierto(false)}
+            />
         </div>
     );
 };

@@ -131,12 +131,20 @@ const registrarAuditoria = async (accion: string, ejecutadoPor: string, req: Req
  */
 export const crearSolicitudRegistro = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { documento, nombreCompleto, correo, subdirectiva, telefono } = req.body;
+        const { documento, nombreCompleto, correo, subdirectiva, telefono, aceptaTratamientoDatos } = req.body;
 
         if (!documento || !nombreCompleto || !correo) {
             res.status(400).json({
                 success: false,
                 error: 'El documento de identidad, nombre completo y correo electrónico son obligatorios.',
+            });
+            return;
+        }
+
+        if (aceptaTratamientoDatos === false) {
+            res.status(400).json({
+                success: false,
+                error: 'Debe autorizar el tratamiento de sus datos personales y de filiación sindical para radicar la inscripción (Ley 1581 de 2012).',
             });
             return;
         }
@@ -269,12 +277,14 @@ export const crearSolicitudRegistro = async (req: Request, res: Response): Promi
             throw new Error(`Error en base de datos al registrar la solicitud: ${insertError.message}`);
         }
 
-        // Registrar auditoría de la solicitud radicada
+        // Registrar auditoría de la solicitud radicada con constancia de consentimiento Habeas Data
         await registrarAuditoria('RADICACION_SOLICITUD_VOTANTE', `ELECTOR_${docLimpio}`, req, {
             codigo_radicado: codigoRadicado,
             documento: docLimpio,
             correo: correoLimpio,
             subdirectiva: subdirectivaLimpia,
+            autorizacion_datos_aceptada: true,
+            marco_legal: 'Ley 1581 de 2012',
         });
 
         res.status(201).json({

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut, ShieldCheck, Play, BarChart3, Lock, FileText, Activity, Users, Menu, X, User, UserCheck, PictureInPicture2 } from 'lucide-react';
+import { LogOut, ShieldCheck, Play, BarChart3, Lock, FileText, Activity, Users, Menu, X, User, UserCheck, PictureInPicture2, Scale } from 'lucide-react';
 import { LoginRol } from './components/LoginRol';
 import { LoginVotante } from './components/LoginVotante';
 import { CabinaVotacion, type Candidato } from './components/CabinaVotacion';
@@ -15,6 +15,7 @@ import { PanelCensoVotantes } from './components/PanelCensoVotantes';
 import { PanelSolicitudesRegistro } from './components/PanelSolicitudesRegistro';
 import { VerificadorCadenaHashes } from './components/VerificadorCadenaHashes';
 import { ModalVideoTutorial, type ModoTutorial } from './components/ModalVideoTutorial';
+import { ModalPoliticaPrivacidad } from './components/ModalPoliticaPrivacidad';
 import { ToastProvider } from './components/Toast';
 
 interface EleccionInfo {
@@ -43,6 +44,7 @@ function AppContent() {
   const [usuarioStaff, setUsuarioStaff] = useState<UsuarioStaff | null>(null);
   const [menuMobileAbierto, setMenuMobileAbierto] = useState<boolean>(false);
   const [videoTutorialAbierto, setVideoTutorialAbierto] = useState<boolean>(false);
+  const [modalPrivacidadAbierto, setModalPrivacidadAbierto] = useState<boolean>(false);
   const [tutorialModo, setTutorialModo] = useState<ModoTutorial>('MODAL');
   const [tutorialPasoInicial, setTutorialPasoInicial] = useState<number>(0);
 
@@ -748,11 +750,20 @@ function AppContent() {
             </div>
           </div>
 
-          <div className="pt-4 flex flex-col sm:flex-row justify-between items-center gap-2 text-[11px] text-slate-400">
+          <div className="pt-4 flex flex-col sm:flex-row justify-between items-center gap-3 text-[11px] text-slate-400">
             <div>
               © 2026 Tribunal Electoral Autónomo • Sistema de Votación y Escrutinio Digital
             </div>
-            <div className="flex items-center gap-3 font-mono text-[10px]">
+            <div className="flex flex-wrap items-center justify-center gap-2.5 font-mono text-[10px]">
+              <button
+                type="button"
+                onClick={() => setModalPrivacidadAbierto(true)}
+                className="text-indigo-400 hover:text-indigo-300 transition cursor-pointer flex items-center gap-1 font-sans underline underline-offset-2"
+              >
+                <Scale className="w-3 h-3" />
+                <span>Política de Privacidad & Habeas Data</span>
+              </button>
+              <span>•</span>
               <span>Canal Seguro</span>
               <span>•</span>
               <span>Sellado Digital</span>
@@ -769,6 +780,12 @@ function AppContent() {
         onClose={() => setVideoTutorialAbierto(false)}
         initialMode={tutorialModo}
         initialSceneIndex={tutorialPasoInicial}
+      />
+
+      {/* Modal Global de Política de Privacidad y Tratamiento de Datos (Ley 1581) */}
+      <ModalPoliticaPrivacidad
+        isOpen={modalPrivacidadAbierto}
+        onClose={() => setModalPrivacidadAbierto(false)}
       />
     </div>
   );

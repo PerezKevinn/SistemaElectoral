@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, User, KeyRound, Copy, Check, Eye, EyeOff, Key, UserPlus, Sparkles, PictureInPicture2, HelpCircle } from 'lucide-react';
+import { ShieldCheck, Lock, User, KeyRound, Copy, Check, Eye, EyeOff, Key, UserPlus, Sparkles, PictureInPicture2, HelpCircle, Scale } from 'lucide-react';
 import { ModalSolicitudRegistro } from './ModalSolicitudRegistro';
 import { ModalVideoTutorial, type ModoTutorial } from './ModalVideoTutorial';
+import { ModalPoliticaPrivacidad } from './ModalPoliticaPrivacidad';
 
 interface LoginVotanteProps {
     onLoginExitoso: (tokenVotacion: string, eleccionActivaId: string) => void;
@@ -14,6 +15,7 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso, onAb
     const [mostrarPassword, setMostrarPassword] = useState(false);
     const [codigoMfa, setCodigoMfa] = useState('');
     const [modalSolicitudAbierto, setModalSolicitudAbierto] = useState(false);
+    const [modalPoliticaAbierto, setModalPoliticaAbierto] = useState(false);
     const [modalVideoLocal, setModalVideoLocal] = useState(false);
     const [modoLocal, setModoLocal] = useState<ModoTutorial>('MODAL');
     const [pasoIndexLocal, setPasoIndexLocal] = useState<number>(0);
@@ -458,10 +460,20 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso, onAb
                     </form>
                 )}
 
-                <div className="mt-8 text-center border-t border-slate-800/80 pt-4">
+                <div className="mt-8 text-center border-t border-slate-800/80 pt-4 space-y-2">
                     <p className="text-[11px] text-slate-400">
                         Canal de votación seguro | Tu identidad permanece disociada y protegida tras la entrega de la papeleta.
                     </p>
+                    <div>
+                        <button
+                            type="button"
+                            onClick={() => setModalPoliticaAbierto(true)}
+                            className="inline-flex items-center gap-1.5 text-[10px] text-slate-400 hover:text-indigo-300 transition cursor-pointer underline underline-offset-2"
+                        >
+                            <Scale className="w-3 h-3 text-indigo-400" />
+                            <span>Aviso Legal de Privacidad y Tratamiento de Datos (Ley 1581)</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -470,6 +482,12 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso, onAb
                 isOpen={modalSolicitudAbierto}
                 onClose={() => setModalSolicitudAbierto(false)}
                 onAbrirTutorial={dispararTutorial}
+            />
+
+            {/* Modal de Política de Privacidad y Garantías Electorales */}
+            <ModalPoliticaPrivacidad
+                isOpen={modalPoliticaAbierto}
+                onClose={() => setModalPoliticaAbierto(false)}
             />
 
             {/* Fallback si no se pasa onAbrirTutorial desde App */}

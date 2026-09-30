@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Shield, Lock, UserCheck, KeyRound, User, AlertCircle, ShieldCheck, CheckCircle2, ChevronRight, Fingerprint, LockKeyhole, Eye, EyeOff, UserPlus } from 'lucide-react';
+import { Shield, Lock, UserCheck, KeyRound, User, AlertCircle, ShieldCheck, CheckCircle2, ChevronRight, Fingerprint, LockKeyhole, Eye, EyeOff, UserPlus, Scale } from 'lucide-react';
 import { ModalSolicitudRegistro } from './ModalSolicitudRegistro';
+import { ModalPoliticaPrivacidad } from './ModalPoliticaPrivacidad';
 
 type Rol = 'VOTANTE' | 'AUDITOR' | 'ADMIN';
 
@@ -23,6 +24,7 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [modalSolicitudAbierto, setModalSolicitudAbierto] = useState(false);
+    const [modalPoliticaAbierto, setModalPoliticaAbierto] = useState(false);
 
     const handleIngreso = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -318,18 +320,29 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
                 </form>
 
                 {/* Security Trust Note */}
-                <div className="mt-6 pt-5 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500">
+                <div className="mt-6 pt-5 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-500">
                     <div className="flex items-center gap-1.5">
                         <Lock className="w-3.5 h-3.5 text-slate-400" />
                         <span>Conexión Segura y Protegida</span>
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => setModalSolicitudAbierto(true)}
-                        className="text-[10px] text-slate-400 hover:text-emerald-400 transition cursor-pointer"
-                    >
-                        Consultar Radicado
-                    </button>
+                    <div className="flex items-center gap-3 text-[10px]">
+                        <button
+                            type="button"
+                            onClick={() => setModalPoliticaAbierto(true)}
+                            className="text-slate-400 hover:text-indigo-400 transition cursor-pointer flex items-center gap-1"
+                        >
+                            <Scale className="w-3 h-3 text-indigo-400" />
+                            <span>Privacidad & Habeas Data</span>
+                        </button>
+                        <span>•</span>
+                        <button
+                            type="button"
+                            onClick={() => setModalSolicitudAbierto(true)}
+                            className="text-slate-400 hover:text-emerald-400 transition cursor-pointer"
+                        >
+                            Consultar Radicado
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -337,6 +350,12 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
             <ModalSolicitudRegistro
                 isOpen={modalSolicitudAbierto}
                 onClose={() => setModalSolicitudAbierto(false)}
+            />
+
+            {/* Modal de Política de Privacidad y Tratamiento de Datos */}
+            <ModalPoliticaPrivacidad
+                isOpen={modalPoliticaAbierto}
+                onClose={() => setModalPoliticaAbierto(false)}
             />
         </div>
     );

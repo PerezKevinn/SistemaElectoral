@@ -35,26 +35,26 @@ graph LR
 ---
 
 ### 🕒 Paso 2: ¿No estás en la lista? Regístrate aquí
-* **Duración:** 0:13 - 0:28 (15 segundos)
-* **Texto en Pantalla:** *"Pide tu inscripción en menos de un minuto"*
+* **Duración:** 0:13 - 0:29 (16 segundos)
+* **Texto en Pantalla:** *"Pide tu inscripción; tus credenciales llegarán al ser aprobado"*
 * **Locución (Voz en Off):**
-  > *"Si no apareces en la lista o necesitas actualizar tus datos, haz clic en '¿No figura en el censo?'. Llena tus datos básicos: cédula, nombre, correo, sede y teléfono. Al enviar, recibirás un número de radicado para hacerle seguimiento."*
+  > *"Si no apareces en la lista o necesitas actualizar tus datos, haz clic en '¿No figura en el censo?'. Llena tus datos básicos: cédula, nombre, correo, sede y teléfono. Al enviar, recibirás un número de radicado. Ten en cuenta que tus credenciales de acceso solo llegarán a tu correo electrónico cuando el comité electoral revise y apruebe tu solicitud."*
 * **Puntos Clave:**
   - Formulario sencillo con tus datos básicos.
-  - Recibes tu número de radicado al instante.
-  - El comité revisa y aprueba tu solicitud.
+  - Recibes tu número de radicado para hacer seguimiento.
+  - 📩 **IMPORTANTE:** Las credenciales de ingreso se envían a tu correo **únicamente cuando el comité apruebe tu solicitud**.
 
 ---
 
 ### 🕒 Paso 3: Ingreso y Creación de tu Clave
-* **Duración:** 0:28 - 0:42 (14 segundos)
-* **Texto en Pantalla:** *"Crea una clave personal que solo tú conozcas"*
+* **Duración:** 0:29 - 0:44 (15 segundos)
+* **Texto en Pantalla:** *"Ingresa con la clave recibida tras la aprobación de tu censo"*
 * **Locución (Voz en Off):**
-  > *"Ingresa con tu número de cédula y la clave inicial que te entregaron. La primera vez que entres, el sistema te pedirá crear una clave nueva y personal de mínimo 6 letras o números. Así tu cuenta queda totalmente protegida."*
+  > *"Una vez aprobada tu solicitud o si ya estabas en el censo, ingresa con tu cédula y la clave inicial enviada a tu correo. La primera vez que entres, el sistema te pedirá crear una clave nueva y personal de mínimo 6 letras o números. Así tu cuenta queda totalmente protegida."*
 * **Puntos Clave:**
-  - Escribe tu cédula y clave inicial.
-  - Crea tu clave nueva y personal.
-  - Solo tú tendrás acceso a tu votación.
+  - Usa tu cédula y la clave inicial enviada a tu correo tras la aprobación.
+  - Crea tu clave nueva y personal (mínimo 6 caracteres).
+  - Solo tú tendrás acceso exclusivo a tu votación.
 
 ---
 

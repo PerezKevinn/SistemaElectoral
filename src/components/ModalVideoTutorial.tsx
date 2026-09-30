@@ -29,7 +29,8 @@ import {
     Minus,
     Columns,
     PictureInPicture2,
-    HelpCircle
+    HelpCircle,
+    Mail
 } from 'lucide-react';
 
 export type ModoTutorial = 'MODAL' | 'PIP' | 'COMPACT' | 'SIDEBAR';
@@ -109,32 +110,32 @@ export const ModalVideoTutorial: React.FC<ModalVideoTutorialProps> = ({
         {
             id: 2,
             titulo: '2. ¿No estás en la lista? Regístrate aquí',
-            subtitulo: 'Pide tu inscripción en menos de un minuto',
-            duracionEstimadaSegundos: 15,
+            subtitulo: 'Pide tu inscripción; tus credenciales llegarán al ser aprobado',
+            duracionEstimadaSegundos: 16,
             icono: <UserPlus className="w-4 h-4 text-blue-400" />,
             colorBadge: 'bg-blue-500/10 border-blue-500/30 text-blue-300',
-            locucion: 'Si no apareces en la lista o necesitas actualizar tus datos, haz clic en "¿No figura en el censo?". Llena tus datos básicos: cédula, nombre, correo, sede y teléfono. Al enviar, recibirás un número de radicado para hacerle seguimiento.',
+            locucion: 'Si no apareces en la lista o necesitas actualizar tus datos, haz clic en "¿No figura en el censo?". Llena tus datos básicos: cédula, nombre, correo, sede y teléfono. Al enviar, recibirás un número de radicado. Ten en cuenta que tus credenciales de acceso solo llegarán a tu correo electrónico cuando el comité electoral revise y apruebe tu solicitud.',
             puntosClave: [
                 'Formulario sencillo con tus datos básicos',
-                'Recibes tu número de radicado al instante',
-                'El comité revisa y aprueba tu solicitud',
+                'Recibes tu número de radicado para hacer seguimiento',
+                '📩 IMPORTANTE: Tus credenciales de acceso llegarán a tu correo ÚNICAMENTE cuando tu solicitud sea aprobada',
             ],
-            pasoAccion: 'Haz clic en "¿No figura en el censo?" si aún no estás registrado.',
+            pasoAccion: 'Radica tu solicitud. Las credenciales de ingreso llegarán a tu correo al ser aprobada.',
         },
         {
             id: 3,
             titulo: '3. Ingreso y Creación de tu Clave',
-            subtitulo: 'Crea una clave personal que solo tú conozcas',
-            duracionEstimadaSegundos: 14,
+            subtitulo: 'Ingresa con la clave recibida tras la aprobación de tu censo',
+            duracionEstimadaSegundos: 15,
             icono: <Lock className="w-4 h-4 text-amber-400" />,
             colorBadge: 'bg-amber-500/10 border-amber-500/30 text-amber-300',
-            locucion: 'Ingresa con tu número de cédula y la clave inicial que te entregaron. La primera vez que entres, el sistema te pedirá crear una clave nueva y personal de mínimo 6 letras o números. Así tu cuenta queda totalmente protegida.',
+            locucion: 'Una vez aprobada tu solicitud o si ya estabas en el censo, ingresa con tu cédula y la clave inicial enviada a tu correo. La primera vez que entres, el sistema te pedirá crear una clave nueva y personal de mínimo 6 letras o números. Así tu cuenta queda totalmente protegida.',
             puntosClave: [
-                'Escribe tu cédula y clave inicial',
+                'Usa tu cédula y la clave inicial enviada a tu correo tras la aprobación',
                 'Crea tu clave nueva y personal (mín. 6 dígitos)',
-                'Solo tú tendrás acceso a tu votación',
+                'Solo tú tendrás acceso exclusivo a tu votación',
             ],
-            pasoAccion: 'Escribe tu cédula y cambia tu contraseña temporal por una nueva.',
+            pasoAccion: 'Escribe tu cédula y la clave recibida por correo, luego crea tu nueva contraseña.',
         },
         {
             id: 4,
@@ -480,13 +481,17 @@ export const ModalVideoTutorial: React.FC<ModalVideoTutorialProps> = ({
                             </div>
                         </div>
 
-                        <div className="bg-blue-950/30 border border-blue-500/30 rounded-xl p-2 text-center space-y-1">
+                        <div className="bg-blue-950/30 border border-blue-500/30 rounded-xl p-2.5 text-center space-y-1.5">
                             <div className="flex items-center justify-center gap-1 text-blue-400 text-[11px] font-bold">
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 <span>Radicado Asignado</span>
                             </div>
                             <div className="px-2 py-0.5 bg-slate-900/90 border border-blue-500/40 rounded font-mono text-emerald-400 text-xs font-bold">
                                 RAD-2026-9843
+                            </div>
+                            <div className="p-1.5 bg-amber-500/15 border border-amber-500/30 rounded-lg text-[9px] text-amber-300 font-medium leading-tight flex items-center gap-1 text-left">
+                                <Mail className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                <span>Tus credenciales llegarán al correo <strong>al aprobarse</strong> la solicitud.</span>
                             </div>
                         </div>
                     </div>

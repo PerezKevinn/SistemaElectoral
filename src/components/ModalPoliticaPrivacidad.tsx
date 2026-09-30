@@ -132,7 +132,7 @@ export const ModalPoliticaPrivacidad: React.FC<ModalPoliticaPrivacidadProps> = (
                                     <span>Declaración de Cumplimiento Legal y Estatutario</span>
                                 </div>
                                 <p className="text-slate-300 text-xs">
-                                    El presente Sistema de Votación y Escrutinio Digital opera bajo estricto cumplimiento de la <strong>Ley Estatutaria 1581 de 2012</strong> (Régimen General de Protección de Datos Personales), el Decreto Reglamentario 1377 de 2013, los Artículos 388 y 390 del Código Sustantivo del Trabajo de Colombia, el Convenio 87 de la OIT sobre Libertad Sindical y el Artículo 258 de la Constitución Política.
+                                    El presente Sistema de Votación y Escrutinio Digital opera bajo estricto cumplimiento de la <strong>Ley Estatutaria 1581 de 2012</strong> (Régimen General de Protección de Datos Personales), el Decreto Reglamentario 1377 de 2013, los Artículos 388 y 390 del Código Sustantivo del Trabajo de Colombia, el Convenio 87 de la OIT sobre Libertad Sindical y el Artículo 258 de la Constitución Política de Colombia.
                                 </p>
                             </div>
 
@@ -143,7 +143,7 @@ export const ModalPoliticaPrivacidad: React.FC<ModalPoliticaPrivacidadProps> = (
                                         <span>1. Finalidad Exclusiva</span>
                                     </div>
                                     <p className="text-[11px] text-slate-400 leading-normal">
-                                        Los datos personales recolectados (documento de identidad, nombres, correo institucional, subdirectiva y teléfono) se usan <strong>única y exclusivamente</strong> para validar su habilitación estatutaria en el censo electoral y despachar sus credenciales privadas de acceso.
+                                        Los datos personales recolectados (documento de identidad, nombres, correo institucional, subdirectiva y teléfono) se usan <strong>única y exclusivamente</strong> para validar su habilitación estatutaria en el censo electoral y remitir sus credenciales privadas de acceso.
                                     </p>
                                 </div>
 
@@ -153,17 +153,17 @@ export const ModalPoliticaPrivacidad: React.FC<ModalPoliticaPrivacidadProps> = (
                                         <span>2. Secreto Inviolable del Voto</span>
                                     </div>
                                     <p className="text-[11px] text-slate-400 leading-normal">
-                                        El sistema implementa <strong>desacoplamiento criptográfico (Zero-Knowledge)</strong> mediante tokens ciegos SHA-256. Su sufragio jamás queda enlazado a su nombre, cédula o dirección IP en la urna digital.
+                                        Garantizamos el <strong>anonimato absoluto</strong> de su elección. El sistema disocia de forma estricta su identidad personal del sentido de su voto, asegurando que nadie pueda conocer ni rastrear por quién votó.
                                     </p>
                                 </div>
 
                                 <div className="p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl space-y-1.5">
                                     <div className="flex items-center gap-2 font-bold text-purple-300 text-xs">
                                         <Lock className="w-4 h-4 text-purple-400" />
-                                        <span>3. Cifrado y Cero Acceso a Claves</span>
+                                        <span>3. Confidencialidad y Seguridad</span>
                                     </div>
                                     <p className="text-[11px] text-slate-400 leading-normal">
-                                        Las contraseñas se almacenan mediante funciones hash unidireccionales <code>bcrypt</code> con factor de trabajo reforzado. <strong>Ningún administrador o directivo sindical puede ver su contraseña en texto claro.</strong>
+                                        Sus contraseñas y accesos se resguardan bajo estrictos estándares de seguridad y cifrado. <strong>Ningún administrador, jurado o directivo sindical tiene acceso ni puede visualizar sus contraseñas.</strong>
                                     </p>
                                 </div>
 
@@ -173,7 +173,7 @@ export const ModalPoliticaPrivacidad: React.FC<ModalPoliticaPrivacidadProps> = (
                                         <span>4. Caducidad y Supresión Segura</span>
                                     </div>
                                     <p className="text-[11px] text-slate-400 leading-normal">
-                                        Finalizado el periodo estatutario de impugnaciones (60 días tras la proclamación de resultados), las credenciales temporales y bitácoras no requeridas para el acta oficial son suprimidas de manera segura.
+                                        Finalizado el proceso electoral y el período estatutario de impugnaciones, los accesos temporales y la información operativa no requerida para el acta oficial son suprimidos de manera segura.
                                     </p>
                                 </div>
                             </div>
@@ -186,10 +186,10 @@ export const ModalPoliticaPrivacidad: React.FC<ModalPoliticaPrivacidadProps> = (
                             <div className="p-4 bg-emerald-950/30 border border-emerald-800/50 rounded-xl space-y-2">
                                 <div className="flex items-center gap-2 text-emerald-300 font-bold text-sm">
                                     <EyeOff className="w-5 h-5 text-emerald-400" />
-                                    <span>Garantía Constitucional y Criptográfica de Sufragio Secreto</span>
+                                    <span>Garantía Constitucional y Estatutaria de Sufragio Secreto</span>
                                 </div>
                                 <p className="text-slate-300 text-xs">
-                                    En cumplimiento del <strong>Artículo 390 del Código Sustantivo del Trabajo</strong> y el <strong>Artículo 258 de la Constitución Política</strong>, la votación es personal, libre, directa y secreta.
+                                    En cumplimiento del <strong>Artículo 390 del Código Sustantivo del Trabajo</strong> y el <strong>Artículo 258 de la Constitución Política</strong>, la votación es personal, libre, directa y estrictamente secreta.
                                 </p>
                             </div>
 
@@ -201,25 +201,25 @@ export const ModalPoliticaPrivacidad: React.FC<ModalPoliticaPrivacidadProps> = (
                                     <li className="flex items-start gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
                                         <span>
-                                            <strong>Bases de Datos Separadas e Independientes:</strong> La información del censo electoral (nombres, cédula, correo) reside en una base de datos desacoplada de la base de datos de la Urna Digital de Votación.
+                                            <strong>Separación de Identidad y Voto:</strong> El censo electoral de votantes habilitados se gestiona de manera totalmente independiente a la urna de votación, impidiendo cualquier vinculación entre la persona y su elección.
                                         </span>
                                     </li>
                                     <li className="flex items-start gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
                                         <span>
-                                            <strong>Emisión de Token Ciego (Blind Token):</strong> Al iniciar sesión con su segundo factor de autenticación (2FA), el sistema le entrega a su navegador un token aleatorio de 256 bits y marca en el censo que su derecho al voto ha sido ejercido.
+                                            <strong>Habilitación Única de Cabina:</strong> Al identificarse y superar los pasos de autenticación de seguridad, el sistema habilita su derecho al voto de un solo uso y registra su participación en el censo para garantizar que cada elector vote una única vez.
                                         </span>
                                     </li>
                                     <li className="flex items-start gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
                                         <span>
-                                            <strong>Depósito Anónimo en la Urna:</strong> Cuando deposita su papeleta en la cabina, el servidor solo valida que el token exista y no haya sido quemado antes. La tabla de votos almacena únicamente la opción votada, el sello de tiempo y el encadenamiento de hash criptográfico, <strong>sin registrar su cédula, nombre, IP ni dispositivo</strong>.
+                                            <strong>Depósito Confidencial en la Urna:</strong> Al marcar su preferencia en la cabina virtual y confirmar su voto, este ingresa a la urna electrónica de forma anónima, computando únicamente la opción elegida sin registrar su nombre, cédula ni datos de su equipo o conexión.
                                         </span>
                                     </li>
                                     <li className="flex items-start gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
                                         <span>
-                                            <strong>Comprobante Criptográfico Personal:</strong> El recibo emitido le permite verificar que su voto fue contabilizado en el escrutinio, sin que nadie más pueda deducir cuál fue su opción elegida.
+                                            <strong>Comprobante Digital de Participación:</strong> Al finalizar la votación, usted recibe un certificado digital que acredita que su voto fue válidamente computado en el escrutinio, sin revelar en ningún momento su decisión electoral.
                                         </span>
                                     </li>
                                 </ul>
@@ -244,21 +244,21 @@ export const ModalPoliticaPrivacidad: React.FC<ModalPoliticaPrivacidadProps> = (
                                 <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl">
                                     <strong className="text-white block text-xs mb-1">A. Derecho de Acceso y Consulta:</strong>
                                     <p className="text-[11px] text-slate-400">
-                                        Conocer en cualquier momento si se encuentra inscrito y habilitado en el censo electoral oficial a través del módulo público "Consultar Radicado".
+                                        Conocer en cualquier momento si se encuentra inscrito y habilitado en el censo electoral oficial a través del módulo de consulta habilitado en el portal.
                                     </p>
                                 </div>
 
                                 <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl">
                                     <strong className="text-white block text-xs mb-1">B. Derecho de Actualización y Rectificación:</strong>
                                     <p className="text-[11px] text-slate-400">
-                                        Solicitar la corrección de errores en su nombre, documento, correo electrónico o subdirectiva asignada antes del cierre oficial del censo.
+                                        Solicitar la corrección de errores en sus nombres, número de identificación, correo electrónico o subdirectiva asignada con anterioridad al cierre definitivo del censo electoral.
                                     </p>
                                 </div>
 
                                 <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl">
                                     <strong className="text-white block text-xs mb-1">C. Derecho de Supresión (Cancelación):</strong>
                                     <p className="text-[11px] text-slate-400">
-                                        Solicitar la eliminación de sus datos de contacto de las bases de datos de notificación cuando medie causa legal o renuncia formal a la afiliación sindical.
+                                        Solicitar la eliminación de sus datos de contacto cuando medie causa legal, revocatoria estatutaria o renuncia formal a la afiliación sindical.
                                     </p>
                                 </div>
 
@@ -290,22 +290,22 @@ export const ModalPoliticaPrivacidad: React.FC<ModalPoliticaPrivacidadProps> = (
 
                                 <h4 className="font-bold text-indigo-300 uppercase text-xs pt-2">2. Marco Normativo Aplicable</h4>
                                 <p>
-                                    Constitución Política de Colombia (Artículos 15, 39 y 258); Ley Estatutaria 1581 de 2012; Decreto Reglamentario 1377 de 2013; Ley 527 de 1999 (Mensajes de Datos y Firmas Digitales); Ley 1273 de 2009 (Protección de la Información y Delitos Informáticos); Código Sustantivo del Trabajo (Arts. 388, 390); Convenios 87 y 98 de la Organización Internacional del Trabajo (OIT).
+                                    Constitución Política de Colombia (Artículos 15, 39 y 258); Ley Estatutaria 1581 de 2012; Decreto Reglamentario 1377 de 2013; Ley 527 de 1999 (Mensajes de Datos y Firmas Digitales); Ley 1273 de 2009 (Protección de la Información y Seguridad Digital); Código Sustantivo del Trabajo (Arts. 388, 390); Convenios 87 y 98 de la Organización Internacional del Trabajo (OIT).
                                 </p>
 
                                 <h4 className="font-bold text-indigo-300 uppercase text-xs pt-2">3. Tratamiento de Datos Sensibles (Filiación Sindical)</h4>
                                 <p>
-                                    El titular reconoce y acepta que la información sobre su pertenencia a la organización sindical constituye un <strong>dato sensible</strong>. Su tratamiento es indispensable para el ejercicio legítimo del derecho de asociación sindical y el sufragio en la jornada democrática, y no será divulgado, comercializado ni transferido a terceros no autorizados.
+                                    El titular reconoce y acepta que la información sobre su pertenencia a la organización sindical constituye un <strong>dato de especial protección (dato sensible)</strong>. Su tratamiento es indispensable y exclusivo para el ejercicio legítimo del derecho de asociación sindical y el sufragio en la jornada democrática, y no será transferido, divulgado ni comercializado a terceros bajo ninguna circunstancia.
                                 </p>
 
-                                <h4 className="font-bold text-indigo-300 uppercase text-xs pt-2">4. Medidas Técnicas de Seguridad</h4>
+                                <h4 className="font-bold text-indigo-300 uppercase text-xs pt-2">4. Medidas y Salvaguardas de Seguridad</h4>
                                 <p>
-                                    El sistema aplica autenticación de doble factor (2FA/TOTP), hashing irreversible de contraseñas mediante <code>bcrypt</code>, firmas HMAC de desafíos, limitación de tasa de solicitudes (Rate Limiting) contra ataques de fuerza bruta, y registro inmutable de auditoría para todas las acciones administrativas de apertura, cierre y gestión.
+                                    La plataforma implementa controles institucionales de seguridad de la información, que incluyen autenticación de doble factor, almacenamiento seguro y protegido de credenciales de acceso, controles de acceso por roles, mecanismos de protección contra accesos no autorizados y registro formal de auditoría para todas las acciones administrativas de apertura, escrutinio y cierre, asegurando la transparencia e inalterabilidad de los resultados.
                                 </p>
 
                                 <h4 className="font-bold text-indigo-300 uppercase text-xs pt-2">5. Conservación de Evidencias y Supresión</h4>
                                 <p>
-                                    El acta oficial de escrutinio, los comprobantes de hash y las bitácoras firmadas por los jurados se conservarán por el término legal de ejecutoria y prescripción de las acciones electorales laborales. Vencido este plazo, la información no requerida será destruida o anonimizada.
+                                    El acta oficial de escrutinio, los certificados consolidados de votación y las bitácoras suscritas por los jurados electorales se conservarán durante el término legal de ejecutoria y prescripción de las acciones correspondientes. Vencido este plazo, la información operativa que no sea requerida por ley será suprimida de manera segura.
                                 </p>
                             </div>
                         </div>
@@ -330,3 +330,4 @@ export const ModalPoliticaPrivacidad: React.FC<ModalPoliticaPrivacidadProps> = (
         </div>
     );
 };
+

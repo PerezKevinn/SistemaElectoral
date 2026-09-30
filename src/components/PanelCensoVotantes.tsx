@@ -442,11 +442,11 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
                             </h2>
                             <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800/60 flex items-center gap-1">
                                 <Sparkles className="w-3 h-3 text-emerald-400" />
-                                Zero-Knowledge
+                                Privacidad Garantizada
                             </span>
                         </div>
                         <p className="text-xs text-slate-400 mt-0.5">
-                            Carga masiva vía Excel (.xlsx / .csv), generación criptográfica y despacho privado de credenciales
+                            Carga de censo vía Excel (.xlsx / .csv), emisión segura y despacho privado de credenciales
                         </p>
                     </div>
                 </div>
@@ -498,15 +498,15 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
             {/* PESTAÑA 1: CARGA MASIVA */}
             {pestana === 'CARGA' && (
                 <div className="space-y-6">
-                    {/* Tarjeta de Seguridad Zero-Knowledge */}
+                    {/* Tarjeta de Seguridad y Privacidad */}
                     <div className="p-4 bg-slate-900/60 border border-indigo-900/40 rounded-xl flex items-start space-x-3 text-xs text-slate-300">
                         <ShieldCheck className="w-5 h-5 flex-shrink-0 text-indigo-400 mt-0.5" />
                         <div className="space-y-1">
                             <strong className="text-indigo-200 font-semibold block">
-                                Protocolo de Privacidad y Cero Conocimiento (Zero-Knowledge):
+                                Protocolo de Privacidad y Confidencialidad de Credenciales:
                             </strong>
                             <p className="text-slate-400 leading-relaxed text-[11px]">
-                                Las contraseñas temporales se generan aleatoriamente con alta entropía criptográfica y se envían de forma directa y cifrada al correo electrónico institucional del elector. <strong>Ningún miembro del personal administrativo tiene acceso a ver o almacenar estas contraseñas en texto plano.</strong>
+                                Las contraseñas temporales se generan de forma automática y se envían directamente al correo registrado del elector. <strong>Ningún miembro del personal administrativo tiene acceso a visualizar o almacenar dichas contraseñas.</strong>
                             </p>
                         </div>
                     </div>

@@ -29,7 +29,7 @@ export const ModalPoliticaPrivacidad: React.FC<ModalPoliticaPrivacidadProps> = (
     return (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-200">
             <div className="max-w-3xl w-full glass-panel border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-                
+
                 {/* Header Institucional */}
                 <div className="bg-slate-900/95 border-b border-slate-800 p-4 sm:p-5 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -73,11 +73,10 @@ export const ModalPoliticaPrivacidad: React.FC<ModalPoliticaPrivacidadProps> = (
                     <button
                         type="button"
                         onClick={() => setSeccionActiva('RESUMEN')}
-                        className={`py-2 px-3 rounded-lg font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                            seccionActiva === 'RESUMEN'
+                        className={`py-2 px-3 rounded-lg font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${seccionActiva === 'RESUMEN'
                                 ? 'bg-indigo-600 text-white shadow-md'
                                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-                        }`}
+                            }`}
                     >
                         <FileText className="w-3.5 h-3.5" />
                         <span>Resumen Legal</span>
@@ -85,11 +84,10 @@ export const ModalPoliticaPrivacidad: React.FC<ModalPoliticaPrivacidadProps> = (
                     <button
                         type="button"
                         onClick={() => setSeccionActiva('VOTO_SECRETO')}
-                        className={`py-2 px-3 rounded-lg font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                            seccionActiva === 'VOTO_SECRETO'
+                        className={`py-2 px-3 rounded-lg font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${seccionActiva === 'VOTO_SECRETO'
                                 ? 'bg-emerald-600 text-white shadow-md'
                                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-                        }`}
+                            }`}
                     >
                         <EyeOff className="w-3.5 h-3.5" />
                         <span>Voto Secreto</span>
@@ -97,11 +95,10 @@ export const ModalPoliticaPrivacidad: React.FC<ModalPoliticaPrivacidadProps> = (
                     <button
                         type="button"
                         onClick={() => setSeccionActiva('DERECHOS')}
-                        className={`py-2 px-3 rounded-lg font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                            seccionActiva === 'DERECHOS'
+                        className={`py-2 px-3 rounded-lg font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${seccionActiva === 'DERECHOS'
                                 ? 'bg-cyan-600 text-white shadow-md'
                                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-                        }`}
+                            }`}
                     >
                         <UserCheck className="w-3.5 h-3.5" />
                         <span>Derechos ARCO</span>
@@ -109,11 +106,10 @@ export const ModalPoliticaPrivacidad: React.FC<ModalPoliticaPrivacidadProps> = (
                     <button
                         type="button"
                         onClick={() => setSeccionActiva('COMPLETO')}
-                        className={`py-2 px-3 rounded-lg font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                            seccionActiva === 'COMPLETO'
+                        className={`py-2 px-3 rounded-lg font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${seccionActiva === 'COMPLETO'
                                 ? 'bg-slate-700 text-white shadow-md'
                                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-                        }`}
+                            }`}
                     >
                         <Scale className="w-3.5 h-3.5" />
                         <span>Texto Completo</span>
@@ -122,7 +118,7 @@ export const ModalPoliticaPrivacidad: React.FC<ModalPoliticaPrivacidadProps> = (
 
                 {/* Contenido Principal */}
                 <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4 text-xs text-slate-300 leading-relaxed print:text-black">
-                    
+
                     {/* SECCIÓN 1: RESUMEN EJECUTIVO */}
                     {seccionActiva === 'RESUMEN' && (
                         <div className="space-y-4 animate-in fade-in duration-150">
@@ -268,7 +264,7 @@ export const ModalPoliticaPrivacidad: React.FC<ModalPoliticaPrivacidadProps> = (
                                         <span className="text-slate-400 text-[11px]">Comisión de Garantías Electorales y Protección de Datos</span>
                                     </div>
                                     <span className="px-3 py-1.5 bg-slate-800 text-indigo-300 font-mono text-[11px] rounded-lg border border-slate-700">
-                                        elecciones@sindicato.org
+                                        soporte@altumsoftware.solutions
                                     </span>
                                 </div>
                             </div>

@@ -1,58 +1,58 @@
 import nodemailer from 'nodemailer';
 
 export interface VotanteEmailData {
-    documento: string;
-    nombreCompleto: string;
-    correo: string;
-    passwordPlana: string;
-    subdirectiva?: string;
-    telefono?: string;
+  documento: string;
+  nombreCompleto: string;
+  correo: string;
+  passwordPlana: string;
+  subdirectiva?: string;
+  telefono?: string;
 }
 
 export interface EmailSendResult {
-    success: boolean;
-    simulado: boolean;
-    messageId?: string;
-    error?: string;
+  success: boolean;
+  simulado: boolean;
+  messageId?: string;
+  error?: string;
 }
 
 // Configuración del transportador SMTP
 const crearTransporter = () => {
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
-    const host = process.env.SMTP_HOST || (user?.includes('@gmail.com') ? 'smtp.gmail.com' : undefined);
-    const port = Number(process.env.SMTP_PORT) || 465;
-    const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const host = process.env.SMTP_HOST || (user?.includes('@gmail.com') ? 'smtp.gmail.com' : undefined);
+  const port = Number(process.env.SMTP_PORT) || 465;
+  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
-    if (!user || !pass || !host) {
-        return null;
-    }
+  if (!user || !pass || !host) {
+    return null;
+  }
 
-    return nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: {
-            user,
-            pass,
-        },
-        family: 4, // Forzar IPv4 para evitar ENETUNREACH en Render / Docker
-        connectionTimeout: 10000,
-        greetingTimeout: 5000,
-        socketTimeout: 15000,
-        tls: {
-            rejectUnauthorized: false,
-        },
-    } as any);
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: {
+      user,
+      pass,
+    },
+    family: 4, // Forzar IPv4 para evitar ENETUNREACH en Render / Docker
+    connectionTimeout: 10000,
+    greetingTimeout: 5000,
+    socketTimeout: 15000,
+    tls: {
+      rejectUnauthorized: false,
+    },
+  } as any);
 };
 
 /**
  * Genera la plantilla HTML institucional para el correo del votante
  */
 const generarPlantillaHTML = (data: VotanteEmailData): string => {
-    const appUrl = (process.env.CLIENT_URL || process.env.APP_URL || process.env.FRONTEND_URL || 'https://sistema-electoral-eight.vercel.app/').trim();
+  const appUrl = (process.env.CLIENT_URL || process.env.APP_URL || process.env.FRONTEND_URL || 'https://sistema-electoral-eight.vercel.app/').trim();
 
-    return `
+  return `
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -184,198 +184,198 @@ const generarPlantillaHTML = (data: VotanteEmailData): string => {
  * 4. Modo Simulación (Sandbox local)
  */
 export const enviarCredencialesVotante = async (data: VotanteEmailData): Promise<EmailSendResult> => {
-    const htmlContent = generarPlantillaHTML(data);
-    const subject = `🗳️ Credenciales de Votación Oficial - Documento ${data.documento}`;
-    const fromAddress = process.env.SMTP_FROM || '"Tribunal Electoral" <elecciones@sindicato.org>';
+  const htmlContent = generarPlantillaHTML(data);
+  const subject = `🗳️ Credenciales de Votación Oficial - Documento ${data.documento}`;
+  const fromAddress = process.env.SMTP_FROM || '"Tribunal Electoral" <soporte@altumsoftware.solutions>';
 
-    // --- OPCIÓN 1: RESEND HTTPS API (Inmune a bloqueos de puertos SMTP en Render / Vercel) ---
-    if (process.env.RESEND_API_KEY) {
-        try {
-            const res = await fetch('https://api.resend.com/emails', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${process.env.RESEND_API_KEY.trim()}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    from: process.env.SMTP_FROM || 'Tribunal Electoral <onboarding@resend.dev>',
-                    to: [data.correo],
-                    subject,
-                    html: htmlContent,
-                }),
-            });
-
-            const resData: any = await res.json();
-            if (!res.ok) {
-                throw new Error(resData.message || resData.error || 'Error en API de Resend');
-            }
-
-            console.log(`✅ [RESEND HTTP API] Correo enviado a ${data.correo} | ID: ${resData.id}`);
-            return {
-                success: true,
-                simulado: false,
-                messageId: resData.id,
-            };
-        } catch (err: any) {
-            console.error(`❌ Error en Resend API para ${data.correo}:`, err.message);
-            return {
-                success: false,
-                simulado: false,
-                error: `Resend API: ${err.message}`,
-            };
-        }
-    }
-
-    // --- OPCIÓN 2: BREVO HTTPS API (Inmune a bloqueos de puertos SMTP en Render / Vercel) ---
-    if (process.env.BREVO_API_KEY) {
-        try {
-            const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-                method: 'POST',
-                headers: {
-                    'api-key': process.env.BREVO_API_KEY.trim(),
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    sender: {
-                        name: 'Tribunal Electoral Sindicato',
-                        email: process.env.SMTP_USER || 'altumsoftware.co@gmail.com',
-                    },
-                    to: [{ email: data.correo, name: data.nombreCompleto }],
-                    subject,
-                    htmlContent,
-                }),
-            });
-
-            const resData: any = await res.json();
-            if (!res.ok) {
-                throw new Error(resData.message || 'Error en API de Brevo');
-            }
-
-            console.log(`✅ [BREVO HTTP API] Correo enviado a ${data.correo} | ID: ${resData.messageId}`);
-            return {
-                success: true,
-                simulado: false,
-                messageId: resData.messageId,
-            };
-        } catch (err: any) {
-            console.error(`❌ Error en Brevo API para ${data.correo}:`, err.message);
-            return {
-                success: false,
-                simulado: false,
-                error: `Brevo API: ${err.message}`,
-            };
-        }
-    }
-
-    // --- OPCIÓN 3: NODEMAILER SMTP SOCKETS ---
-    const transporter = crearTransporter();
-
-    if (!transporter) {
-        // Modo Sandbox / Simulación local
-        console.log(`[EMAIL SIMULADO] Enviar credencial a ${data.correo} | Doc: ${data.documento} | Subdirectiva: ${data.subdirectiva || 'General'}`);
-        return {
-            success: true,
-            simulado: true,
-            messageId: `sim-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-        };
-    }
-
+  // --- OPCIÓN 1: RESEND HTTPS API (Inmune a bloqueos de puertos SMTP en Render / Vercel) ---
+  if (process.env.RESEND_API_KEY) {
     try {
-        const info = await transporter.sendMail({
-            from: fromAddress,
-            to: data.correo,
-            subject,
-            html: htmlContent,
-        });
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY.trim()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: process.env.SMTP_FROM || 'Tribunal Electoral <onboarding@resend.dev>',
+          to: [data.correo],
+          subject,
+          html: htmlContent,
+        }),
+      });
 
-        return {
-            success: true,
-            simulado: false,
-            messageId: info.messageId,
-        };
+      const resData: any = await res.json();
+      if (!res.ok) {
+        throw new Error(resData.message || resData.error || 'Error en API de Resend');
+      }
+
+      console.log(`✅ [RESEND HTTP API] Correo enviado a ${data.correo} | ID: ${resData.id}`);
+      return {
+        success: true,
+        simulado: false,
+        messageId: resData.id,
+      };
     } catch (err: any) {
-        console.error(`❌ Error enviando correo a ${data.correo}:`, err.message);
-        return {
-            success: false,
-            simulado: false,
-            error: err.message || 'Fallo en servidor SMTP',
-        };
+      console.error(`❌ Error en Resend API para ${data.correo}:`, err.message);
+      return {
+        success: false,
+        simulado: false,
+        error: `Resend API: ${err.message}`,
+      };
     }
+  }
+
+  // --- OPCIÓN 2: BREVO HTTPS API (Inmune a bloqueos de puertos SMTP en Render / Vercel) ---
+  if (process.env.BREVO_API_KEY) {
+    try {
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': process.env.BREVO_API_KEY.trim(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: {
+            name: 'Tribunal Electoral Sindicato',
+            email: process.env.SMTP_USER || 'altumsoftware.co@gmail.com',
+          },
+          to: [{ email: data.correo, name: data.nombreCompleto }],
+          subject,
+          htmlContent,
+        }),
+      });
+
+      const resData: any = await res.json();
+      if (!res.ok) {
+        throw new Error(resData.message || 'Error en API de Brevo');
+      }
+
+      console.log(`✅ [BREVO HTTP API] Correo enviado a ${data.correo} | ID: ${resData.messageId}`);
+      return {
+        success: true,
+        simulado: false,
+        messageId: resData.messageId,
+      };
+    } catch (err: any) {
+      console.error(`❌ Error en Brevo API para ${data.correo}:`, err.message);
+      return {
+        success: false,
+        simulado: false,
+        error: `Brevo API: ${err.message}`,
+      };
+    }
+  }
+
+  // --- OPCIÓN 3: NODEMAILER SMTP SOCKETS ---
+  const transporter = crearTransporter();
+
+  if (!transporter) {
+    // Modo Sandbox / Simulación local
+    console.log(`[EMAIL SIMULADO] Enviar credencial a ${data.correo} | Doc: ${data.documento} | Subdirectiva: ${data.subdirectiva || 'General'}`);
+    return {
+      success: true,
+      simulado: true,
+      messageId: `sim-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+    };
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: fromAddress,
+      to: data.correo,
+      subject,
+      html: htmlContent,
+    });
+
+    return {
+      success: true,
+      simulado: false,
+      messageId: info.messageId,
+    };
+  } catch (err: any) {
+    console.error(`❌ Error enviando correo a ${data.correo}:`, err.message);
+    return {
+      success: false,
+      simulado: false,
+      error: err.message || 'Fallo en servidor SMTP',
+    };
+  }
 };
 
 /**
  * Diagnóstico del estado del servidor de correos (Resend / Brevo / SMTP)
  */
 export const verificarEstadoSmtp = async (): Promise<{
-    configurado: boolean;
-    modo: 'REAL' | 'SIMULACION';
-    host?: string;
-    puerto?: number;
-    remitente?: string;
-    mensaje: string;
-    error?: string;
+  configurado: boolean;
+  modo: 'REAL' | 'SIMULACION';
+  host?: string;
+  puerto?: number;
+  remitente?: string;
+  mensaje: string;
+  error?: string;
 }> => {
-    // 1. Resend API (HTTPS port 443)
-    if (process.env.RESEND_API_KEY) {
-        return {
-            configurado: true,
-            modo: 'REAL',
-            host: 'api.resend.com (HTTPS REST)',
-            remitente: process.env.SMTP_FROM || 'onboarding@resend.dev',
-            mensaje: 'Servicio de correo activo vía Resend HTTPS API (Inmune a bloqueos de puertos en la nube).',
-        };
-    }
+  // 1. Resend API (HTTPS port 443)
+  if (process.env.RESEND_API_KEY) {
+    return {
+      configurado: true,
+      modo: 'REAL',
+      host: 'api.resend.com (HTTPS REST)',
+      remitente: process.env.SMTP_FROM || 'onboarding@resend.dev',
+      mensaje: 'Servicio de correo activo vía Resend HTTPS API (Inmune a bloqueos de puertos en la nube).',
+    };
+  }
 
-    // 2. Brevo API (HTTPS port 443)
-    if (process.env.BREVO_API_KEY) {
-        return {
-            configurado: true,
-            modo: 'REAL',
-            host: 'api.brevo.com (HTTPS REST)',
-            remitente: process.env.SMTP_USER || 'Brevo API',
-            mensaje: 'Servicio de correo activo vía Brevo HTTPS API.',
-        };
-    }
+  // 2. Brevo API (HTTPS port 443)
+  if (process.env.BREVO_API_KEY) {
+    return {
+      configurado: true,
+      modo: 'REAL',
+      host: 'api.brevo.com (HTTPS REST)',
+      remitente: process.env.SMTP_USER || 'Brevo API',
+      mensaje: 'Servicio de correo activo vía Brevo HTTPS API.',
+    };
+  }
 
-    // 3. SMTP Sockets
-    const host = process.env.SMTP_HOST || (process.env.SMTP_USER?.includes('@gmail.com') ? 'smtp.gmail.com' : undefined);
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
+  // 3. SMTP Sockets
+  const host = process.env.SMTP_HOST || (process.env.SMTP_USER?.includes('@gmail.com') ? 'smtp.gmail.com' : undefined);
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
 
-    if (!user || !pass) {
-        return {
-            configurado: false,
-            modo: 'SIMULACION',
-            mensaje: 'Servidor de correo no configurado. Las claves se guardan en BD pero no se envían a bandejas reales.',
-        };
-    }
+  if (!user || !pass) {
+    return {
+      configurado: false,
+      modo: 'SIMULACION',
+      mensaje: 'Servidor de correo no configurado. Las claves se guardan en BD pero no se envían a bandejas reales.',
+    };
+  }
 
-    const transporter = crearTransporter();
-    if (!transporter) {
-        return {
-            configurado: false,
-            modo: 'SIMULACION',
-            mensaje: 'No se pudo inicializar la conexión SMTP.',
-        };
-    }
+  const transporter = crearTransporter();
+  if (!transporter) {
+    return {
+      configurado: false,
+      modo: 'SIMULACION',
+      mensaje: 'No se pudo inicializar la conexión SMTP.',
+    };
+  }
 
-    try {
-        await transporter.verify();
-        return {
-            configurado: true,
-            modo: 'REAL',
-            host,
-            puerto: Number(process.env.SMTP_PORT) || 465,
-            remitente: process.env.SMTP_FROM || user,
-            mensaje: `Conexión SMTP activa con ${host}. Los correos se envían a las bandejas reales.`,
-        };
-    } catch (err: any) {
-        return {
-            configurado: false,
-            modo: 'SIMULACION',
-            host,
-            mensaje: `Fallo al verificar SMTP (${err.message}). Si estás en Render Free, los puertos SMTP de salida están bloqueados; recomendamos usar RESEND_API_KEY vía HTTPS.`,
-            error: err.message,
-        };
-    }
+  try {
+    await transporter.verify();
+    return {
+      configurado: true,
+      modo: 'REAL',
+      host,
+      puerto: Number(process.env.SMTP_PORT) || 465,
+      remitente: process.env.SMTP_FROM || user,
+      mensaje: `Conexión SMTP activa con ${host}. Los correos se envían a las bandejas reales.`,
+    };
+  } catch (err: any) {
+    return {
+      configurado: false,
+      modo: 'SIMULACION',
+      host,
+      mensaje: `Fallo al verificar SMTP (${err.message}). Si estás en Render Free, los puertos SMTP de salida están bloqueados; recomendamos usar RESEND_API_KEY vía HTTPS.`,
+      error: err.message,
+    };
+  }
 };

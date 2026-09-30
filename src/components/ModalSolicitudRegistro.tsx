@@ -23,6 +23,7 @@ import {
 import { useToast } from './Toast';
 import type { ModoTutorial } from './ModalVideoTutorial';
 import { ModalPoliticaPrivacidad } from './ModalPoliticaPrivacidad';
+import { getTelemetryHeaders, getDeviceTelemetry } from '../utils/deviceFingerprint';
 
 interface ModalSolicitudRegistroProps {
     isOpen: boolean;
@@ -95,9 +96,15 @@ export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ 
         setEnviando(true);
 
         try {
+            const telemetry = await getDeviceTelemetry();
+            const telemetryHeaders = await getTelemetryHeaders();
+
             const res = await fetch('/api/censo/solicitudes/crear', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...telemetryHeaders,
+                },
                 body: JSON.stringify({
                     documento: form.documento.trim(),
                     nombreCompleto: form.nombreCompleto.trim(),
@@ -105,6 +112,8 @@ export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ 
                     subdirectiva: form.subdirectiva.trim(),
                     telefono: form.telefono.trim(),
                     aceptaTratamientoDatos: true,
+                    deviceId: telemetry.deviceId,
+                    deviceFingerprint: telemetry.deviceFingerprint,
                 }),
             });
 
@@ -143,7 +152,10 @@ export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ 
         setConsultando(true);
         setConsultaRealizada(true);
         try {
-            const res = await fetch(`/api/censo/solicitudes/estado/${encodeURIComponent(docConsulta.trim())}`);
+            const telemetryHeaders = await getTelemetryHeaders();
+            const res = await fetch(`/api/censo/solicitudes/estado/${encodeURIComponent(docConsulta.trim())}`, {
+                headers: telemetryHeaders,
+            });
             let data: any = {};
             try {
                 data = await res.json();

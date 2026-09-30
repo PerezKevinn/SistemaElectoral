@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Vote, CheckCircle2, AlertCircle, PictureInPicture2 } from 'lucide-react';
 import type { ModoTutorial } from './ModalVideoTutorial';
+import { getTelemetryHeaders } from '../utils/deviceFingerprint';
 
 export interface Candidato {
     id: string;
@@ -35,9 +36,13 @@ export const CabinaVotacion: React.FC<CabinaVotacionProps> = ({
         setErrorMsg(null);
 
         try {
+            const telemetryHeaders = await getTelemetryHeaders();
             const response = await fetch('/api/urna/votar', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...telemetryHeaders,
+                },
                 body: JSON.stringify({
                     eleccionId,
                     tokenPlano: tokenVotacion,

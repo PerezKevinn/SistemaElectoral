@@ -18,6 +18,7 @@ import { useToast } from './Toast';
 export interface AlertaSeguridadDispositivo {
     tieneAlerta: boolean;
     esMismoDispositivo: boolean;
+    tipoCoincidencia?: 'UUID_NAVEGADOR' | 'HUELLA_HARDWARE' | 'IP_Y_NAVEGADOR' | 'MISMA_RED_WIFI' | 'NINGUNA';
     nivelRiesgo: 'BAJO' | 'MEDIO' | 'ALTO';
     tipoDispositivo: string;
     totalCoincidencias: number;
@@ -353,14 +354,14 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                 >
                     <div className="flex items-center justify-between mb-1">
                         <span className={`text-xs font-semibold ${(metricas.conAlertas || 0) > 0 ? 'text-amber-300' : 'text-slate-400'}`}>
-                            Mismo Celular/Red
+                            Mismo Celular / Equipo
                         </span>
                         <AlertTriangle className={`w-4 h-4 ${(metricas.conAlertas || 0) > 0 ? 'text-amber-400 animate-pulse' : 'text-slate-500'}`} />
                     </div>
                     <div className={`text-2xl font-bold font-mono ${(metricas.conAlertas || 0) > 0 ? 'text-amber-300' : 'text-slate-400'}`}>
                         {metricas.conAlertas || 0}
                     </div>
-                    <span className="text-[10px] text-slate-400">Alertas de coincidencia</span>
+                    <span className="text-[10px] text-slate-400">Coincidencia de dispositivo</span>
                 </div>
 
                 <div
@@ -513,7 +514,14 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                                                         >
                                                             <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
                                                             <span>
-                                                                {sol.alerta_seguridad.esMismoDispositivo ? 'Mismo Celular' : 'Misma Red'} ({sol.alerta_seguridad.totalCoincidencias})
+                                                                {sol.alerta_seguridad.tipoCoincidencia === 'UUID_NAVEGADOR'
+                                                                    ? 'Mismo Navegador'
+                                                                    : sol.alerta_seguridad.tipoCoincidencia === 'HUELLA_HARDWARE'
+                                                                    ? 'Mismo Celular'
+                                                                    : sol.alerta_seguridad.esMismoDispositivo
+                                                                    ? 'Mismo Equipo'
+                                                                    : 'Misma Red Wi-Fi'}{' '}
+                                                                ({sol.alerta_seguridad.totalCoincidencias})
                                                             </span>
                                                         </button>
                                                     )}
@@ -714,6 +722,18 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                                     <span className="text-[10px] uppercase font-mono text-slate-500 block">Dispositivo Detectado</span>
                                     <span className="text-amber-300 font-semibold">
                                         {solicitudDetalleAlerta.alerta_seguridad?.tipoDispositivo || 'Dispositivo Móvil'}
+                                    </span>
+                                </div>
+                                <div className="col-span-2 pt-1 border-t border-slate-800/80 flex items-center justify-between">
+                                    <span className="text-[10px] uppercase font-mono text-slate-500">Criterio de Coincidencia:</span>
+                                    <span className="text-cyan-300 font-mono text-[11px] font-semibold">
+                                        {solicitudDetalleAlerta.alerta_seguridad?.tipoCoincidencia === 'UUID_NAVEGADOR'
+                                            ? '🔑 UUID de Navegador (Mismo Almacenamiento)'
+                                            : solicitudDetalleAlerta.alerta_seguridad?.tipoCoincidencia === 'HUELLA_HARDWARE'
+                                            ? '🧬 Huella Digital (Hardware / Canvas / GPU)'
+                                            : solicitudDetalleAlerta.alerta_seguridad?.tipoCoincidencia === 'MISMA_RED_WIFI'
+                                            ? '📶 Misma Red Wi-Fi / IP (Dispositivos Distintos)'
+                                            : '🌐 IP y Navegador Web'}
                                     </span>
                                 </div>
                             </div>

@@ -5,6 +5,7 @@ import { censoDb, urnaDb } from '../config/supabase';
 import { AuthRequest } from '../middleware/authRole';
 import { validarDocumento, validarEmail, validarTextoSeguro } from '../middleware/security';
 import { enviarCredencialesVotante } from '../services/emailService';
+import { obtenerTelemetriaDispositivo, esIpPrivada, sanitizarIp } from '../utils/telemetry';
 
 // Helper para evitar bloqueo del Event Loop en procesos intensivos
 const yieldEventLoop = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
@@ -97,6 +98,7 @@ export const clasificarDispositivoSeguro = (ua?: string | null): string => {
 export interface AlertaSeguridadDispositivo {
     tieneAlerta: boolean;
     esMismoDispositivo: boolean;
+    tipoCoincidencia: 'UUID_NAVEGADOR' | 'HUELLA_HARDWARE' | 'IP_Y_NAVEGADOR' | 'MISMA_RED_WIFI' | 'NINGUNA';
     nivelRiesgo: 'BAJO' | 'MEDIO' | 'ALTO';
     tipoDispositivo: string;
     totalCoincidencias: number;
@@ -111,14 +113,17 @@ export interface AlertaSeguridadDispositivo {
  */
 const registrarAuditoria = async (accion: string, ejecutadoPor: string, req: Request, detalles: any) => {
     try {
-        const ip = req.ip || (req.headers['x-forwarded-for'] as string) || '127.0.0.1';
-        const userAgent = (req.headers['user-agent'] as string) || 'Desconocido';
+        const { ip, userAgent, deviceId, deviceFingerprint } = obtenerTelemetriaDispositivo(req);
         await urnaDb.from('logs_auditoria_admin').insert({
             accion,
             ejecutado_por: ejecutadoPor,
             ip_origen: ip,
             user_agent: userAgent,
-            detalles,
+            detalles: {
+                ...detalles,
+                device_uuid: deviceId || detalles?.device_uuid || null,
+                device_fingerprint: deviceFingerprint || detalles?.device_fingerprint || null,
+            },
         });
     } catch (err) {
         console.error('Error registrando log de auditoría solicitudes:', err);
@@ -250,8 +255,7 @@ export const crearSolicitudRegistro = async (req: Request, res: Response): Promi
         // C. CREACIÓN DE LA SOLICITUD
         const { nombres, apellidos } = descomponerNombre(nombreCompleto);
         const codigoRadicado = generarCodigoRadicado();
-        const ip = req.ip || (req.headers['x-forwarded-for'] as string) || '127.0.0.1';
-        const userAgent = (req.headers['user-agent'] as string) || 'Desconocido';
+        const { ip, userAgent, deviceId, deviceFingerprint } = obtenerTelemetriaDispositivo(req);
 
         const nuevaSolicitud = {
             codigo_radicado: codigoRadicado,
@@ -277,7 +281,7 @@ export const crearSolicitudRegistro = async (req: Request, res: Response): Promi
             throw new Error(`Error en base de datos al registrar la solicitud: ${insertError.message}`);
         }
 
-        // Registrar auditoría de la solicitud radicada con constancia de consentimiento Habeas Data
+        // Registrar auditoría de la solicitud radicada con constancia de consentimiento Habeas Data y Telemetría
         await registrarAuditoria('RADICACION_SOLICITUD_VOTANTE', `ELECTOR_${docLimpio}`, req, {
             codigo_radicado: codigoRadicado,
             documento: docLimpio,
@@ -285,6 +289,8 @@ export const crearSolicitudRegistro = async (req: Request, res: Response): Promi
             subdirectiva: subdirectivaLimpia,
             autorizacion_datos_aceptada: true,
             marco_legal: 'Ley 1581 de 2012',
+            device_uuid: deviceId,
+            device_fingerprint: deviceFingerprint,
         });
 
         res.status(201).json({
@@ -332,6 +338,32 @@ export const consultarEstadoSolicitud = async (req: Request, res: Response): Pro
         if (error) throw error;
 
         const ultimaSolicitud = solicitudes && solicitudes.length > 0 ? solicitudes[0] : null;
+
+        // Auto-enriquecimiento de telemetría: si la solicitud histórica tenía la IP de proxy interna (10.24.0.151), actualizarla con la IP pública real y UUID
+        if (ultimaSolicitud && (esIpPrivada(ultimaSolicitud.ip_origen || '') || !ultimaSolicitud.ip_origen)) {
+            try {
+                const { ip: ipActual, userAgent: uaActual, deviceId, deviceFingerprint } = obtenerTelemetriaDispositivo(req);
+                if (ipActual && !esIpPrivada(ipActual)) {
+                    censoDb
+                        .from('solicitudes_registro_votante')
+                        .update({
+                            ip_origen: ipActual,
+                            user_agent: uaActual || ultimaSolicitud.user_agent,
+                        })
+                        .eq('id', ultimaSolicitud.id)
+                        .then(() => {});
+
+                    registrarAuditoria('ACTUALIZACION_TELEMETRIA_CONSULTA', `ELECTOR_${documento}`, req, {
+                        codigo_radicado: ultimaSolicitud.codigo_radicado,
+                        device_uuid: deviceId,
+                        device_fingerprint: deviceFingerprint,
+                        ip_actualizada: ipActual,
+                    }).catch(() => {});
+                }
+            } catch (telemetryErr) {
+                // Silencioso para no interrumpir la consulta
+            }
+        }
 
         // Sanitización y enmascaramiento de datos personales (PII) para consulta pública
         const enmascararTexto = (txt: string): string => {
@@ -403,8 +435,8 @@ export const listarSolicitudes = async (req: AuthRequest, res: Response): Promis
 
         const solicitudesRaw = todasSolicitudes || [];
 
-        // 2. Obtener bitácora de auditoría de radicación para complementar telemetría si faltara en la tabla
-        const auditMap = new Map<string, { ip: string; ua: string }>();
+        // 2. Obtener bitácora de auditoría de radicación para complementar telemetría (UUID, Fingerprint, IP)
+        const auditMap = new Map<string, { ip: string; ua: string; deviceId?: string | null; fingerprint?: string | null }>();
         try {
             const { data: auditLogs } = await urnaDb
                 .from('logs_auditoria_admin')
@@ -418,8 +450,11 @@ export const listarSolicitudes = async (req: AuthRequest, res: Response): Promis
                     const radicado = log.detalles?.codigo_radicado;
                     const ip = log.ip_origen || '';
                     const ua = log.user_agent || '';
-                    if (doc) auditMap.set(doc, { ip, ua });
-                    if (radicado) auditMap.set(radicado, { ip, ua });
+                    const devId = log.detalles?.device_uuid || null;
+                    const fp = log.detalles?.device_fingerprint || null;
+                    const payload = { ip, ua, deviceId: devId, fingerprint: fp };
+                    if (doc) auditMap.set(doc, payload);
+                    if (radicado) auditMap.set(radicado, payload);
                 }
             }
         } catch (auditErr) {
@@ -429,47 +464,79 @@ export const listarSolicitudes = async (req: AuthRequest, res: Response): Promis
         // 3. Normalizar telemetría de cada solicitud
         const solicitudesConTelemetria = solicitudesRaw.map((s: any) => {
             const auditInfo = auditMap.get(s.codigo_radicado) || auditMap.get(s.documento_identidad);
-            const ip = (s.ip_origen || auditInfo?.ip || '').trim();
+            const ip = sanitizarIp((s.ip_origen || auditInfo?.ip || '').trim());
             const ua = (s.user_agent || auditInfo?.ua || '').trim();
+            const deviceId = auditInfo?.deviceId || null;
+            const fingerprint = auditInfo?.fingerprint || null;
             return {
                 ...s,
                 _ip: ip,
                 _ua: ua,
+                _deviceId: deviceId,
+                _fingerprint: fingerprint,
             };
         });
 
-        // 4. Agrupar por dispositivo físico y por red
-        // Misma IP + Mismo User-Agent => Mismo dispositivo físico / celular
-        // Misma IP (no localhost) con distinto UA => Misma red WiFi / LAN
-        const gruposDispositivo = new Map<string, any[]>();
+        // 4. Agrupaciones inteligentes:
+        // A. Por Device UUID persistente (Almacenamiento navegador)
+        // B. Por Device Fingerprint (Huella de Hardware / Canvas / WebGL)
+        // C. Por IP pública + User Agent (Fallback)
+        // D. Por IP pública (Misma red WiFi / LAN compartida)
+        const gruposDeviceId = new Map<string, any[]>();
+        const gruposFingerprint = new Map<string, any[]>();
+        const gruposIpUa = new Map<string, any[]>();
         const gruposRed = new Map<string, any[]>();
 
         for (const s of solicitudesConTelemetria) {
-            if (s._ip && s._ip !== '127.0.0.1' && s._ip !== '::1') {
-                const keyDispositivo = `${s._ip}_###_${s._ua}`;
-                const listDisp = gruposDispositivo.get(keyDispositivo) || [];
-                listDisp.push(s);
-                gruposDispositivo.set(keyDispositivo, listDisp);
+            if (s._deviceId) {
+                const list = gruposDeviceId.get(s._deviceId) || [];
+                list.push(s);
+                gruposDeviceId.set(s._deviceId, list);
+            }
 
-                const keyRed = s._ip;
-                const listRed = gruposRed.get(keyRed) || [];
+            if (s._fingerprint) {
+                const list = gruposFingerprint.get(s._fingerprint) || [];
+                list.push(s);
+                gruposFingerprint.set(s._fingerprint, list);
+            }
+
+            if (s._ip && s._ip !== '127.0.0.1' && !esIpPrivada(s._ip)) {
+                const keyIpUa = `${s._ip}_###_${s._ua}`;
+                const listIpUa = gruposIpUa.get(keyIpUa) || [];
+                listIpUa.push(s);
+                gruposIpUa.set(keyIpUa, listIpUa);
+
+                const listRed = gruposRed.get(s._ip) || [];
                 listRed.push(s);
-                gruposRed.set(keyRed, listRed);
+                gruposRed.set(s._ip, listRed);
             }
         }
 
         // 5. Enriquecer cada solicitud con su análisis de seguridad no invasivo
         const solicitudesEnriquecidas = solicitudesConTelemetria.map((s: any) => {
-            const keyDispositivo = `${s._ip}_###_${s._ua}`;
-            const coincidentesDispositivo = (s._ip && gruposDispositivo.get(keyDispositivo)) || [];
-            const coincidentesRed = (s._ip && gruposRed.get(s._ip)) || [];
+            let grupoRef: any[] = [];
+            let tipoCoincidencia: 'UUID_NAVEGADOR' | 'HUELLA_HARDWARE' | 'IP_Y_NAVEGADOR' | 'MISMA_RED_WIFI' | 'NINGUNA' = 'NINGUNA';
+            let esMismoDispositivo = false;
 
-            const esMismoDispositivo = coincidentesDispositivo.length > 1;
-            const esMismaRed = !esMismoDispositivo && coincidentesRed.length > 1;
+            if (s._deviceId && (gruposDeviceId.get(s._deviceId)?.length || 0) > 1) {
+                grupoRef = gruposDeviceId.get(s._deviceId)!;
+                tipoCoincidencia = 'UUID_NAVEGADOR';
+                esMismoDispositivo = true;
+            } else if (s._fingerprint && (gruposFingerprint.get(s._fingerprint)?.length || 0) > 1) {
+                grupoRef = gruposFingerprint.get(s._fingerprint)!;
+                tipoCoincidencia = 'HUELLA_HARDWARE';
+                esMismoDispositivo = true;
+            } else if (s._ip && !esIpPrivada(s._ip) && (gruposIpUa.get(`${s._ip}_###_${s._ua}`)?.length || 0) > 1) {
+                grupoRef = gruposIpUa.get(`${s._ip}_###_${s._ua}`)!;
+                tipoCoincidencia = 'IP_Y_NAVEGADOR';
+                esMismoDispositivo = true;
+            } else if (s._ip && !esIpPrivada(s._ip) && (gruposRed.get(s._ip)?.length || 0) > 1) {
+                grupoRef = gruposRed.get(s._ip)!;
+                tipoCoincidencia = 'MISMA_RED_WIFI';
+                esMismoDispositivo = false; // Misma red WiFi pero dispositivos físicos diferentes
+            }
 
-            const grupoRef = esMismoDispositivo ? coincidentesDispositivo : coincidentesRed;
-            const tieneAlerta = grupoRef.length > 1;
-
+            const tieneCoincidencias = grupoRef.length > 1;
             let nivelRiesgo: 'BAJO' | 'MEDIO' | 'ALTO' = 'BAJO';
             const tipoDispositivo = clasificarDispositivoSeguro(s._ua);
             let radicadosRelacionados: string[] = [];
@@ -477,7 +544,7 @@ export const listarSolicitudes = async (req: AuthRequest, res: Response): Promis
             let hayDisparidadGeografica = false;
             const mensajesAlerta: string[] = [];
 
-            if (tieneAlerta) {
+            if (tieneCoincidencias) {
                 radicadosRelacionados = Array.from(new Set(grupoRef.map((g: any) => g.codigo_radicado)));
                 subdirectivasInvolucradas = Array.from(
                     new Set(grupoRef.map((g: any) => g.subdirectiva || 'General').filter(Boolean))
@@ -486,13 +553,25 @@ export const listarSolicitudes = async (req: AuthRequest, res: Response): Promis
 
                 if (esMismoDispositivo) {
                     nivelRiesgo = hayDisparidadGeografica || grupoRef.length >= 3 ? 'ALTO' : 'MEDIO';
-                    mensajesAlerta.push(
-                        `${grupoRef.length} solicitudes radicadas desde el mismo dispositivo (${tipoDispositivo}).`
-                    );
+                    if (tipoCoincidencia === 'UUID_NAVEGADOR') {
+                        mensajesAlerta.push(
+                            `${grupoRef.length} solicitudes radicadas desde el mismo navegador web (UUID de almacenamiento coincidente).`
+                        );
+                    } else if (tipoCoincidencia === 'HUELLA_HARDWARE') {
+                        mensajesAlerta.push(
+                            `${grupoRef.length} solicitudes radicadas desde el mismo equipo/celular físico (${tipoDispositivo} - Huella digital de hardware coincidente).`
+                        );
+                    } else {
+                        mensajesAlerta.push(
+                            `${grupoRef.length} solicitudes radicadas desde el mismo dispositivo (${tipoDispositivo}).`
+                        );
+                    }
                 } else {
-                    nivelRiesgo = hayDisparidadGeografica ? 'ALTO' : 'MEDIO';
+                    // Misma red Wi-Fi compartida pero con dispositivos físicos distintos:
+                    // Es un comportamiento legítimo y esperado en sedes sindicales u oficinas.
+                    nivelRiesgo = hayDisparidadGeografica ? 'MEDIO' : 'BAJO';
                     mensajesAlerta.push(
-                        `${grupoRef.length} solicitudes radicadas desde la misma red de conexión.`
+                        `${grupoRef.length} solicitudes radicadas desde la misma red Wi-Fi / IP pública pero desde equipos físicos individuales (Dispositivos diferentes).`
                     );
                 }
 
@@ -505,14 +584,18 @@ export const listarSolicitudes = async (req: AuthRequest, res: Response): Promis
                 }
             }
 
+            // Solo activar alerta de revisión si es el MISMO dispositivo físico o si existe discrepancia geográfica
+            const tieneAlerta = esMismoDispositivo || (tieneCoincidencias && hayDisparidadGeografica);
+
             // Ocultar datos de telemetría crudos del objeto retornado (Protección de Datos / Privacidad)
-            const { _ip, _ua, ...resto } = s;
+            const { _ip, _ua, _deviceId, _fingerprint, ...resto } = s;
 
             return {
                 ...resto,
                 alerta_seguridad: {
                     tieneAlerta,
                     esMismoDispositivo,
+                    tipoCoincidencia,
                     nivelRiesgo,
                     tipoDispositivo,
                     totalCoincidencias: grupoRef.length > 1 ? grupoRef.length : 1,

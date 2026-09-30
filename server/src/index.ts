@@ -18,8 +18,8 @@ dotenv.config(); // Recargar variables de entorno .env
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// Habilitar trust proxy para despliegues detrás de reverse proxies (Vercel / Render / Cloudflare)
-app.set('trust proxy', 1);
+// Habilitar trust proxy para despliegues detrás de reverse proxies (Vercel / Render / Cloudflare / Nginx)
+app.set('trust proxy', true);
 
 // 1. Cabeceras HTTP de Seguridad con Helmet
 app.use(
@@ -71,7 +71,17 @@ app.use(
         },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+        allowedHeaders: [
+            'Content-Type',
+            'Authorization',
+            'X-Requested-With',
+            'Accept',
+            'X-Device-Id',
+            'X-Device-Fingerprint',
+            'x-device-id',
+            'x-device-fingerprint',
+            'X-Device-Uuid',
+        ],
     })
 );
 

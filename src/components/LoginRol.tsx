@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Shield, Lock, UserCheck, KeyRound, User, AlertCircle, ShieldCheck, CheckCircle2, ChevronRight, Fingerprint, LockKeyhole, Eye, EyeOff, UserPlus, Scale } from 'lucide-react';
 import { ModalSolicitudRegistro } from './ModalSolicitudRegistro';
 import { ModalPoliticaPrivacidad } from './ModalPoliticaPrivacidad';
+import { getTelemetryHeaders } from '../utils/deviceFingerprint';
 
 type Rol = 'VOTANTE' | 'AUDITOR' | 'ADMIN';
 
@@ -37,9 +38,13 @@ export const LoginRol: React.FC<LoginRolProps> = ({ onAccesoConcedido }) => {
 
         setLoading(true);
         try {
+            const telemetryHeaders = await getTelemetryHeaders();
             const res = await fetch('/api/urna/login-staff', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...telemetryHeaders,
+                },
                 body: JSON.stringify({
                     documento: documento.trim(),
                     clave: clave.trim(),

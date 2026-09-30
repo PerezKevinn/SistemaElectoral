@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { censoDb, urnaDb } from '../config/supabase';
 import { AuthRequest } from '../middleware/authRole';
 import { validarDocumento, validarPasswordFuerte, validarUUID } from '../middleware/security';
+import { obtenerTelemetriaDispositivo } from '../utils/telemetry';
 
 const getJwtSecret = (): string => {
     const secret = process.env.JWT_CHALLENGE_SECRET || process.env.JWT_SECRET;
@@ -17,14 +18,17 @@ const getJwtSecret = (): string => {
 // Helper para registrar auditoría de staff
 const registrarAuditoriaStaff = async (accion: string, ejecutadoPor: string, req: Request, detalles: any) => {
     try {
-        const ip = req.ip || (req.headers['x-forwarded-for'] as string) || '127.0.0.1';
-        const userAgent = (req.headers['user-agent'] as string) || 'Desconocido';
+        const { ip, userAgent, deviceId, deviceFingerprint } = obtenerTelemetriaDispositivo(req);
         await urnaDb.from('logs_auditoria_admin').insert({
             accion,
             ejecutado_por: ejecutadoPor,
             ip_origen: ip,
             user_agent: userAgent,
-            detalles,
+            detalles: {
+                ...detalles,
+                device_uuid: deviceId || detalles?.device_uuid || null,
+                device_fingerprint: deviceFingerprint || detalles?.device_fingerprint || null,
+            },
         });
     } catch (err) {
         console.error('Error registrando log de auditoría:', err);

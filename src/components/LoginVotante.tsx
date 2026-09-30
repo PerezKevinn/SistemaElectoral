@@ -3,6 +3,7 @@ import { ShieldCheck, Lock, User, KeyRound, Copy, Check, Eye, EyeOff, Key, UserP
 import { ModalSolicitudRegistro } from './ModalSolicitudRegistro';
 import { ModalVideoTutorial, type ModoTutorial } from './ModalVideoTutorial';
 import { ModalPoliticaPrivacidad } from './ModalPoliticaPrivacidad';
+import { getTelemetryHeaders } from '../utils/deviceFingerprint';
 
 interface LoginVotanteProps {
     onLoginExitoso: (tokenVotacion: string, eleccionActivaId: string) => void;
@@ -54,9 +55,13 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso, onAb
         setLoading(true);
 
         try {
+            const telemetryHeaders = await getTelemetryHeaders();
             const res = await fetch('/api/auth/login-paso1', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...telemetryHeaders,
+                },
                 body: JSON.stringify({ documentoIdentidad: documento.trim(), password }),
             });
 
@@ -106,9 +111,13 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso, onAb
 
         setLoading(true);
         try {
+            const telemetryHeaders = await getTelemetryHeaders();
             const res = await fetch('/api/auth/cambiar-password-inicial', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...telemetryHeaders,
+                },
                 body: JSON.stringify({
                     resetPasswordToken,
                     nuevaPassword: nuevaPassword.trim(),
@@ -145,9 +154,13 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso, onAb
         setLoading(true);
 
         try {
+            const telemetryHeaders = await getTelemetryHeaders();
             const res = await fetch('/api/auth/login-paso2-mfa', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...telemetryHeaders,
+                },
                 body: JSON.stringify({
                     challengeToken,
                     codigoMfa: codigoMfa.trim(),

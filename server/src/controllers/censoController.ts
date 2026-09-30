@@ -5,6 +5,7 @@ import { censoDb, urnaDb } from '../config/supabase';
 import { AuthRequest } from '../middleware/authRole';
 import { validarDocumento, validarEmail, validarTextoSeguro } from '../middleware/security';
 import { enviarCredencialesVotante, verificarEstadoSmtp, VotanteEmailData } from '../services/emailService';
+import { obtenerTelemetriaDispositivo } from '../utils/telemetry';
 
 // Helper para evitar bloqueo del Event Loop en procesos intensivos de CPU
 const yieldEventLoop = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
@@ -64,14 +65,17 @@ const descomponerNombre = (nombreCompleto: string): { nombres: string; apellidos
  */
 const registrarAuditoria = async (accion: string, ejecutadoPor: string, req: Request, detalles: any) => {
     try {
-        const ip = req.ip || (req.headers['x-forwarded-for'] as string) || '127.0.0.1';
-        const userAgent = (req.headers['user-agent'] as string) || 'Desconocido';
+        const { ip, userAgent, deviceId, deviceFingerprint } = obtenerTelemetriaDispositivo(req);
         await urnaDb.from('logs_auditoria_admin').insert({
             accion,
             ejecutado_por: ejecutadoPor,
             ip_origen: ip,
             user_agent: userAgent,
-            detalles,
+            detalles: {
+                ...detalles,
+                device_uuid: deviceId || detalles?.device_uuid || null,
+                device_fingerprint: deviceFingerprint || detalles?.device_fingerprint || null,
+            },
         });
     } catch (err) {
         console.error('Error registrando log de auditoría censo:', err);

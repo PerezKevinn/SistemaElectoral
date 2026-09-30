@@ -3,6 +3,7 @@ import { urnaDb, censoDb } from '../config/supabase';
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/authRole';
 import { validarUUID, validarHexToken } from '../middleware/security';
+import { obtenerIpCliente, obtenerTelemetriaDispositivo } from '../utils/telemetry';
 
 export const emitirVoto = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -284,8 +285,7 @@ export const abrirEleccion = async (req: AuthRequest, res: Response): Promise<vo
         const { eleccionId, adminClave } = req.body;
 
         const ejecutadoPor = req.usuario?.nombre || req.usuario?.documento || req.usuario?.id || 'Administrador General';
-        const ipOrigen = req.ip || (req.headers['x-forwarded-for'] as string) || '127.0.0.1';
-        const userAgent = (req.headers['user-agent'] as string) || 'Desconocido';
+        const { ip: ipOrigen, userAgent } = obtenerTelemetriaDispositivo(req);
 
         if (!eleccionId || !adminClave) {
             res.status(400).json({ success: false, error: 'Se requiere eleccionId y adminClave.' });
@@ -314,8 +314,7 @@ export const cerrarEleccion = async (req: AuthRequest, res: Response): Promise<v
 
         // Obtener identidad del usuario desde el JWT o fallback
         const ejecutadoPor = req.usuario?.nombre || req.usuario?.documento || req.usuario?.id || 'Administrador General';
-        const ipOrigen = req.ip || (req.headers['x-forwarded-for'] as string) || '127.0.0.1';
-        const userAgent = req.headers['user-agent'] || 'Desconocido';
+        const { ip: ipOrigen, userAgent } = obtenerTelemetriaDispositivo(req);
 
         if (!eleccionId || !adminClave) {
             res.status(400).json({

@@ -1,6 +1,13 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { loginPaso1, cambiarPasswordInicial, loginPaso2Mfa, verificarVotante, obtenerSetupMfa } from '../controllers/authController';
+import {
+    loginPaso1,
+    cambiarPasswordInicial,
+    loginPaso2Mfa,
+    verificarVotante,
+    obtenerSetupMfa,
+    recuperarPasswordVotante,
+} from '../controllers/authController';
 import { censoDb } from '../config/supabase';
 import { authLimiter, totpLimiter } from '../middleware/security';
 import { requireRol } from '../middleware/authRole';
@@ -12,6 +19,7 @@ router.post('/login-paso1', authLimiter, loginPaso1);
 router.post('/cambiar-password-inicial', authLimiter, cambiarPasswordInicial);
 router.post('/login-paso2', totpLimiter, loginPaso2Mfa);
 router.post('/login-paso2-mfa', totpLimiter, loginPaso2Mfa);
+router.post('/recuperar-password', authLimiter, recuperarPasswordVotante);
 router.get('/verificar/:documento', requireRol(['ADMIN', 'AUDITOR']), verificarVotante);
 router.post('/setup-mfa', authLimiter, obtenerSetupMfa);
 

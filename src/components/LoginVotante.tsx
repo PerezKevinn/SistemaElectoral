@@ -3,6 +3,7 @@ import { ShieldCheck, Lock, User, KeyRound, Copy, Check, Eye, EyeOff, Key, UserP
 import { ModalSolicitudRegistro } from './ModalSolicitudRegistro';
 import { ModalVideoTutorial, type ModoTutorial } from './ModalVideoTutorial';
 import { ModalPoliticaPrivacidad } from './ModalPoliticaPrivacidad';
+import { ModalRecuperarPassword } from './ModalRecuperarPassword';
 import { getTelemetryHeaders } from '../utils/deviceFingerprint';
 
 interface LoginVotanteProps {
@@ -17,6 +18,7 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso, onAb
     const [codigoMfa, setCodigoMfa] = useState('');
     const [modalSolicitudAbierto, setModalSolicitudAbierto] = useState(false);
     const [modalPoliticaAbierto, setModalPoliticaAbierto] = useState(false);
+    const [modalRecuperarAbierto, setModalRecuperarAbierto] = useState(false);
     const [modalVideoLocal, setModalVideoLocal] = useState(false);
     const [modoLocal, setModoLocal] = useState<ModoTutorial>('MODAL');
     const [pasoIndexLocal, setPasoIndexLocal] = useState<number>(0);
@@ -322,9 +324,18 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso, onAb
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                                Contraseña
-                            </label>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                                    Contraseña
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setModalRecuperarAbierto(true)}
+                                    className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 hover:underline transition cursor-pointer"
+                                >
+                                    ¿Olvidaste tu contraseña?
+                                </button>
+                            </div>
                             <div className="relative">
                                 <Lock className="w-5 h-5 text-slate-500 absolute left-3.5 top-3.5 pointer-events-none" />
                                 <input
@@ -501,6 +512,16 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso, onAb
             <ModalPoliticaPrivacidad
                 isOpen={modalPoliticaAbierto}
                 onClose={() => setModalPoliticaAbierto(false)}
+            />
+
+            {/* Modal de Recuperación / Restablecimiento de Contraseña */}
+            <ModalRecuperarPassword
+                isOpen={modalRecuperarAbierto}
+                onClose={() => setModalRecuperarAbierto(false)}
+                onRecuperacionCompletada={(doc) => {
+                    setDocumento(doc);
+                    setPassword('');
+                }}
             />
 
             {/* Fallback si no se pasa onAbrirTutorial desde App */}

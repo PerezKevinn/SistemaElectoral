@@ -7,6 +7,7 @@ export interface VotanteEmailData {
   passwordPlana: string;
   subdirectiva?: string;
   telefono?: string;
+  esRecuperacion?: boolean;
 }
 
 export interface EmailSendResult {
@@ -51,6 +52,7 @@ const crearTransporter = () => {
  */
 const generarPlantillaHTML = (data: VotanteEmailData): string => {
   const appUrl = (process.env.CLIENT_URL || process.env.APP_URL || process.env.FRONTEND_URL || 'https://sistema-electoral-eight.vercel.app/').trim();
+  const esRecup = data.esRecuperacion === true;
 
   return `
 <!DOCTYPE html>
@@ -58,27 +60,27 @@ const generarPlantillaHTML = (data: VotanteEmailData): string => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Credenciales de Acceso - Jornada Electoral</title>
+  <title>${esRecup ? 'Restablecimiento de Credenciales' : 'Credenciales de Acceso'} - Jornada Electoral</title>
 </head>
 <body style="margin: 0; padding: 32px 16px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; -webkit-font-smoothing: antialiased;">
   <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 540px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);">
     
     <!-- LÍNEA SUPERIOR DE ACENTO INSTITUCIONAL -->
     <tr>
-      <td style="height: 5px; background: #0f172a;"></td>
+      <td style="height: 5px; background: ${esRecup ? '#0284c7' : '#0f172a'};"></td>
     </tr>
 
     <!-- ENCABEZADO INSTITUCIONAL -->
     <tr>
       <td style="padding: 32px 32px 24px 32px; border-bottom: 1px solid #f1f5f9;">
         <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">
-          Jornada Electoral Oficial
+          ${esRecup ? 'Seguridad y Recuperación de Cuenta' : 'Jornada Electoral Oficial'}
         </div>
         <h1 style="margin: 0 0 6px 0; font-size: 20px; font-weight: 700; color: #0f172a; letter-spacing: -0.01em;">
-          Credenciales de Sufragio
+          ${esRecup ? 'Restablecimiento de Credenciales' : 'Credenciales de Sufragio'}
         </h1>
         <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.4;">
-          Sistema de Votación y Escrutinio Digital
+          ${esRecup ? 'Has solicitado una nueva contraseña temporal de acceso' : 'Sistema de Votación y Escrutinio Digital'}
         </p>
       </td>
     </tr>
@@ -90,7 +92,9 @@ const generarPlantillaHTML = (data: VotanteEmailData): string => {
           Estimado(a) <strong>${data.nombreCompleto}</strong>,
         </p>
         <p style="margin: 0 0 24px 0; font-size: 13px; color: #64748b; line-height: 1.5;">
-          A continuación se relacionan sus credenciales oficiales para participar en la jornada de votación:
+          ${esRecup
+            ? 'Hemos recibido una solicitud para restablecer tu contraseña. A continuación se genera tu nueva contraseña temporal para ingresar:'
+            : 'A continuación se relacionan sus credenciales oficiales para participar en la jornada de votación:'}
         </p>
 
         <!-- TABLA EN DOS COLUMNAS: 1. TÍTULO | 2. CREDENCIAL -->
@@ -185,7 +189,9 @@ const generarPlantillaHTML = (data: VotanteEmailData): string => {
  */
 export const enviarCredencialesVotante = async (data: VotanteEmailData): Promise<EmailSendResult> => {
   const htmlContent = generarPlantillaHTML(data);
-  const subject = `🗳️ Credenciales de Votación Oficial - Documento ${data.documento}`;
+  const subject = data.esRecuperacion
+    ? `🔑 Restablecimiento de Contraseña - Jornada Electoral (${data.documento})`
+    : `🗳️ Credenciales de Votación Oficial - Documento ${data.documento}`;
   const fromAddress = process.env.SMTP_FROM || '"Tribunal Electoral" <soporte@altumsoftware.solutions>';
 
   // --- OPCIÓN 1: RESEND HTTPS API (Inmune a bloqueos de puertos SMTP en Render / Vercel) ---

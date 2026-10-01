@@ -6,6 +6,8 @@ import QRCode from 'qrcode';
 const otplib = require('otplib');
 import { censoDb, urnaDb } from '../config/supabase';
 import { validarDocumento, validarPasswordFuerte } from '../middleware/security';
+import { enviarCredencialesVotante } from '../services/emailService';
+import { obtenerTelemetriaDispositivo } from '../utils/telemetry';
 
 // Instancia y configuración de compatibilidad de otplib
 const authenticator = otplib.authenticator || otplib;
@@ -452,5 +454,135 @@ export const obtenerSetupMfa = async (req: Request, res: Response): Promise<void
         });
     } catch (error: any) {
         res.status(500).json({ success: false, error: 'Error al obtener parámetros de autenticación.' });
+    }
+};
+
+/**
+ * 5. Recuperar / Restablecer Contraseña Olvidada (Autoservicio del Votante)
+ * Genera una nueva contraseña temporal segura de alta entropía, la envía al correo institucional registrado
+ * y fuerza el cambio de contraseña en el próximo inicio de sesión.
+ */
+export const recuperarPasswordVotante = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { documentoIdentidad } = req.body;
+
+        if (!documentoIdentidad) {
+            res.status(400).json({ success: false, error: 'Documento de identidad requerido.' });
+            return;
+        }
+
+        const docLimpio = validarDocumento(documentoIdentidad);
+        const { ip, userAgent, deviceId, deviceFingerprint } = obtenerTelemetriaDispositivo(req);
+
+        // 1. Buscar votante en censo oficial
+        const { data: votante, error } = await censoDb
+            .from('votantes')
+            .select('id_votante, documento_identidad, nombres, apellidos, correo_institucional, esta_habilitado, ha_solicitado_token')
+            .eq('documento_identidad', docLimpio)
+            .maybeSingle();
+
+        if (error || !votante) {
+            res.status(404).json({
+                success: false,
+                error: 'El documento ingresado no se encuentra registrado en el censo electoral oficial. Verifique el número o radique una solicitud de inscripción.',
+            });
+            return;
+        }
+
+        // 2. Validar habilitación
+        if (!votante.esta_habilitado) {
+            res.status(403).json({
+                success: false,
+                error: 'Tu usuario se encuentra inhabilitado en el censo electoral. Por favor contacta al Tribunal Electoral / Mesa de Ayuda.',
+            });
+            return;
+        }
+
+        // 3. Validar si ya votó (Prohibido restablecer credenciales a quien ya ejerció el voto)
+        if (votante.ha_solicitado_token) {
+            res.status(403).json({
+                success: false,
+                error: 'Tu derecho al voto ya ha sido ejercido previamente en esta jornada electoral. Por seguridad e integridad del sufragio, no es posible generar nuevas credenciales.',
+            });
+            return;
+        }
+
+        // 4. Generar nueva contraseña temporal segura de alta entropía
+        const charsMayus = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+        const charsMinus = 'abcdefghjkmnpqrstuvwxyz';
+        const charsNum = '23456789';
+        const charsEspeciales = '#$%&*+@!';
+
+        let nuevaPassword = '';
+        nuevaPassword += charsMayus[crypto.randomInt(0, charsMayus.length)];
+        nuevaPassword += charsMinus[crypto.randomInt(0, charsMinus.length)];
+        nuevaPassword += charsNum[crypto.randomInt(0, charsNum.length)];
+        nuevaPassword += charsEspeciales[crypto.randomInt(0, charsEspeciales.length)];
+
+        const todos = charsMayus + charsMinus + charsNum + charsEspeciales;
+        for (let i = 0; i < 6; i++) {
+            nuevaPassword += todos[crypto.randomInt(0, todos.length)];
+        }
+        nuevaPassword = nuevaPassword.split('').sort(() => 0.5 - Math.random()).join('');
+
+        const password_hash = await bcrypt.hash(nuevaPassword, 10);
+
+        // 5. Actualizar en base de datos: reinicia is_mfa_enabled para forzar flujo de cambio de clave en primer login
+        const { error: updateErr } = await censoDb
+            .from('votantes')
+            .update({
+                password_hash,
+                is_mfa_enabled: false,
+            })
+            .eq('id_votante', votante.id_votante);
+
+        if (updateErr) {
+            console.error('Error actualizando contraseña temporal de recuperación:', updateErr);
+            throw new Error('Error al actualizar las credenciales en el censo.');
+        }
+
+        // 6. Despachar correo oficial
+        const emailResult = await enviarCredencialesVotante({
+            documento: votante.documento_identidad,
+            nombreCompleto: `${votante.nombres || ''} ${votante.apellidos || ''}`.trim(),
+            correo: votante.correo_institucional,
+            passwordPlana: nuevaPassword,
+            esRecuperacion: true,
+        });
+
+        // 7. Asentar en bitácora de auditoría
+        await urnaDb.from('logs_auditoria_admin').insert({
+            accion: 'SOLICITUD_RECUPERACION_PASSWORD_AUTOSERVICIO',
+            ejecutado_por: `ELECTOR_${docLimpio}`,
+            ip_origen: ip,
+            user_agent: userAgent,
+            detalles: {
+                documento: docLimpio,
+                correo_destino: votante.correo_institucional,
+                device_uuid: deviceId,
+                device_fingerprint: deviceFingerprint,
+                email_simulado: emailResult.simulado,
+            },
+        });
+
+        // Enmascarar correo para confirmación al usuario (ej. j•••••z@correo.com)
+        const correo = votante.correo_institucional || '';
+        const [usuario, dominio] = correo.split('@');
+        const correoEnmascarado = usuario && dominio
+            ? `${usuario[0]}${'•'.repeat(Math.max(3, usuario.length - 2))}${usuario.length > 2 ? usuario[usuario.length - 1] : ''}@${dominio}`
+            : 'tu correo registrado';
+
+        res.json({
+            success: true,
+            mensaje: `Hemos generado y enviado una nueva contraseña temporal a tu correo institucional (${correoEnmascarado}). Inicia sesión con esta clave y define tu contraseña personal.`,
+            correoEnmascarado,
+            emailSimulado: emailResult.simulado,
+        });
+    } catch (err: any) {
+        console.error('Error en recuperarPasswordVotante:', err);
+        res.status(err.message?.includes('formato') ? 400 : 500).json({
+            success: false,
+            error: err.message?.includes('formato') ? err.message : 'Error al procesar la recuperación de contraseña.',
+        });
     }
 };

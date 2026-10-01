@@ -1,6 +1,9 @@
-# React + TypeScript + Vite
+# Sistema Electoral y Escrutinio Digital (Entorno Staging / Pruebas)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Plataforma electoral institucional con voto ciego y doble verificación criptográfica.
+
+* **Dominio Staging:** `https://dev.elecciones.altumsoftware.solutions`
+* **Dominio Producción:** `https://elecciones.altumsoftware.solutions`
 
 Currently, two official plugins are available:
 

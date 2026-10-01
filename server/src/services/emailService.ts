@@ -51,7 +51,7 @@ const crearTransporter = () => {
  * Genera la plantilla HTML institucional para el correo del votante
  */
 const generarPlantillaHTML = (data: VotanteEmailData): string => {
-  const appUrl = (process.env.CLIENT_URL || process.env.APP_URL || process.env.FRONTEND_URL || 'https://sistema-electoral-eight.vercel.app/').trim();
+  const appUrl = (process.env.CLIENT_URL || process.env.APP_URL || process.env.FRONTEND_URL || 'https://elecciones.altumsoftware.solutions').trim();
   const esRecup = data.esRecuperacion === true;
 
   return `

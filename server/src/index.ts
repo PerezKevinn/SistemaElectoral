@@ -48,6 +48,7 @@ const origenesPermitidos = [
     'http://127.0.0.1:4000',
     'https://sistema-electoral-eight.vercel.app',
     'https://altumsoftware.solutions',
+    'https://elecciones.altumsoftware.solutions',
     process.env.CLIENT_URL,
     process.env.FRONTEND_URL,
     process.env.APP_URL,
@@ -62,9 +63,10 @@ app.use(
             const normalizado = origin.trim().replace(/\/$/, '');
             const esLocalhost = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
             const esVercelProyecto = /^https:\/\/sistema-electoral(-[a-zA-Z0-9\-_]+)?\.vercel\.app$/.test(normalizado);
+            const esDominioPropio = /^https:\/\/([a-zA-Z0-9\-_]+\.)?altumsoftware\.solutions$/.test(normalizado);
             const esPermitido = origenesPermitidos.some(o => o && normalizado === o);
 
-            if (esPermitido || esVercelProyecto || (esLocalhost && process.env.NODE_ENV !== 'production')) {
+            if (esPermitido || esVercelProyecto || esDominioPropio || (esLocalhost && process.env.NODE_ENV !== 'production')) {
                 return callback(null, true);
             }
             return callback(new Error(`Bloqueado por política de seguridad CORS: ${origin}`));

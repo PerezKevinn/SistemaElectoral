@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ShieldCheck, Lock, User, KeyRound, Copy, Check, Eye, EyeOff, Key, UserPlus, Sparkles, PictureInPicture2, HelpCircle, Scale } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, Lock, User, KeyRound, Copy, Check, Eye, EyeOff, Key, UserPlus, Sparkles, PictureInPicture2, HelpCircle, Scale, Search } from 'lucide-react';
 import { ModalSolicitudRegistro } from './ModalSolicitudRegistro';
 import { ModalVideoTutorial, type ModoTutorial } from './ModalVideoTutorial';
 import { ModalPoliticaPrivacidad } from './ModalPoliticaPrivacidad';
@@ -22,6 +22,18 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso, onAb
     const [modalVideoLocal, setModalVideoLocal] = useState(false);
     const [modoLocal, setModoLocal] = useState<ModoTutorial>('MODAL');
     const [pasoIndexLocal, setPasoIndexLocal] = useState<number>(0);
+    const [inscripcionesAbiertas, setInscripcionesAbiertas] = useState<boolean>(true);
+
+    useEffect(() => {
+        fetch('/api/censo/solicitudes/estado-inscripciones')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && typeof data.inscripcionesAbiertas === 'boolean') {
+                    setInscripcionesAbiertas(data.inscripcionesAbiertas);
+                }
+            })
+            .catch(() => {});
+    }, []);
 
     // Estados de cambio obligatorio de contraseña temporal
     const [pasoCambioPassword, setPasoCambioPassword] = useState(false);
@@ -368,10 +380,21 @@ export const LoginVotante: React.FC<LoginVotanteProps> = ({ onLoginExitoso, onAb
                             <button
                                 type="button"
                                 onClick={() => setModalSolicitudAbierto(true)}
-                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300 hover:underline transition cursor-pointer p-1"
+                                className={`inline-flex items-center gap-1.5 text-xs font-semibold hover:underline transition cursor-pointer p-1 ${
+                                    inscripcionesAbiertas ? 'text-emerald-400 hover:text-emerald-300' : 'text-cyan-400 hover:text-cyan-300'
+                                }`}
                             >
-                                <UserPlus className="w-3.5 h-3.5" />
-                                <span>¿No figura en el censo? Solicite su inscripción oficial aquí</span>
+                                {inscripcionesAbiertas ? (
+                                    <>
+                                        <UserPlus className="w-3.5 h-3.5" />
+                                        <span>¿No figura en el censo? Solicite su inscripción oficial aquí</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Search className="w-3.5 h-3.5" />
+                                        <span>Inscripciones cerradas • Consultar estado de radicado previo</span>
+                                    </>
+                                )}
                             </button>
 
                             {/* Opciones de Tutorial: Modal Grande y Modo Paralelo */}

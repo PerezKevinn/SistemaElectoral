@@ -131,11 +131,150 @@ const registrarAuditoria = async (accion: string, ejecutadoPor: string, req: Req
 };
 
 /**
+ * Estructura y control de estado del periodo de inscripciones al censo
+ */
+export interface EstadoInscripciones {
+    abiertas: boolean;
+    cerradoPor?: string | null;
+    cerradoAt?: string | null;
+    motivo?: string | null;
+    ultimoCambioAt?: string | null;
+}
+
+let cachedEstadoInscripciones: EstadoInscripciones | null = null;
+let lastCacheFetchTime = 0;
+const CACHE_TTL_MS = 5000; // 5 segundos para sincronización ágil entre réplicas
+
+export const obtenerEstadoInscripciones = async (forzarRefresco = false): Promise<EstadoInscripciones> => {
+    const ahora = Date.now();
+    if (!forzarRefresco && cachedEstadoInscripciones && (ahora - lastCacheFetchTime < CACHE_TTL_MS)) {
+        return cachedEstadoInscripciones;
+    }
+
+    try {
+        const { data: latestLog, error } = await urnaDb
+            .from('logs_auditoria_admin')
+            .select('accion, ejecutado_por, creado_at, detalles')
+            .in('accion', ['CIERRE_INSCRIPCIONES', 'APERTURA_INSCRIPCIONES'])
+            .order('creado_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (error) {
+            console.error('Error consultando estado de inscripciones en logs:', error);
+            if (cachedEstadoInscripciones) return cachedEstadoInscripciones;
+            return { abiertas: true };
+        }
+
+        if (!latestLog) {
+            // Si nunca se ha registrado un evento, por defecto están abiertas
+            cachedEstadoInscripciones = { abiertas: true };
+        } else {
+            const abiertas = latestLog.accion === 'APERTURA_INSCRIPCIONES';
+            cachedEstadoInscripciones = {
+                abiertas,
+                cerradoPor: !abiertas ? (latestLog.ejecutado_por || 'Administración Electoral') : null,
+                cerradoAt: !abiertas ? latestLog.creado_at : null,
+                motivo: latestLog.detalles?.motivo || null,
+                ultimoCambioAt: latestLog.creado_at,
+            };
+        }
+    } catch (err) {
+        console.error('Error obteniendo estado de inscripciones:', err);
+        if (cachedEstadoInscripciones) return cachedEstadoInscripciones;
+        cachedEstadoInscripciones = { abiertas: true };
+    }
+
+    lastCacheFetchTime = Date.now();
+    return cachedEstadoInscripciones;
+};
+
+/**
+ * Consulta pública del estado actual de las inscripciones (Abiertas / Cerradas)
+ */
+export const consultarEstadoInscripciones = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const estado = await obtenerEstadoInscripciones();
+        res.json({
+            success: true,
+            inscripcionesAbiertas: estado.abiertas,
+            cerradoPor: estado.cerradoPor,
+            cerradoAt: estado.cerradoAt,
+            motivo: estado.motivo,
+            ultimoCambioAt: estado.ultimoCambioAt,
+        });
+    } catch (err: any) {
+        res.status(500).json({ success: false, error: err.message || 'Error al obtener estado de inscripciones.' });
+    }
+};
+
+/**
+ * Cambiar estado de inscripciones (Abrir / Cerrar) por ADMIN o AUDITOR con auditoría completa
+ */
+export const cambiarEstadoInscripciones = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { abiertas, motivo } = req.body;
+        if (typeof abiertas !== 'boolean') {
+            res.status(400).json({ success: false, error: 'El campo "abiertas" booleano es obligatorio.' });
+            return;
+        }
+
+        const ejecutadoPor = req.usuario?.nombre || req.usuario?.documento || req.usuario?.id || 'Administrador Electoral';
+        const rolUsuario = req.usuario?.rol || 'ADMIN';
+        const motivoLimpio = motivo ? String(motivo).trim() : (abiertas ? 'Reapertura oficial de inscripciones al censo' : 'Cierre oficial del periodo de registro al censo');
+
+        const accion = abiertas ? 'APERTURA_INSCRIPCIONES' : 'CIERRE_INSCRIPCIONES';
+
+        await registrarAuditoria(accion, ejecutadoPor, req, {
+            inscripciones_abiertas: abiertas,
+            motivo: motivoLimpio,
+            rol_ejecutor: rolUsuario,
+            fecha: new Date().toISOString(),
+        });
+
+        // Actualizar cache inmediatamente
+        cachedEstadoInscripciones = {
+            abiertas,
+            cerradoPor: !abiertas ? ejecutadoPor : null,
+            cerradoAt: !abiertas ? new Date().toISOString() : null,
+            motivo: motivoLimpio,
+            ultimoCambioAt: new Date().toISOString(),
+        };
+        lastCacheFetchTime = Date.now();
+
+        res.json({
+            success: true,
+            inscripcionesAbiertas: abiertas,
+            mensaje: abiertas
+                ? 'Periodo de inscripciones abierto exitosamente. Ahora se reciben solicitudes de votantes.'
+                : 'Periodo de inscripciones cerrado exitosamente. Se ha bloqueado la recepción de nuevas solicitudes.',
+            detalles: cachedEstadoInscripciones,
+        });
+    } catch (err: any) {
+        console.error('Error al cambiar estado de inscripciones:', err);
+        res.status(500).json({ success: false, error: err.message || 'Error al actualizar el estado de las inscripciones.' });
+    }
+};
+
+/**
  * 1. Crear Solicitud de Registro de Votante (Público)
  * Con los 5 campos estipulados y blindaje estricto anti-duplicados
  */
 export const crearSolicitudRegistro = async (req: Request, res: Response): Promise<void> => {
     try {
+        // 0. VERIFICACIÓN DE PERIODO DE INSCRIPCIONES (Abierto / Cerrado)
+        const estadoInscripciones = await obtenerEstadoInscripciones();
+        if (!estadoInscripciones.abiertas) {
+            res.status(403).json({
+                success: false,
+                error: 'El periodo de inscripción y recepción de solicitudes ha sido cerrado oficialmente por el Tribunal Electoral y la Comisión de Auditoría. No se admiten nuevas solicitudes de registro.',
+                codigoError: 'INSCRIPCIONES_CERRADAS',
+                cerradoAt: estadoInscripciones.cerradoAt,
+                motivo: estadoInscripciones.motivo,
+            });
+            return;
+        }
+
         const { documento, nombreCompleto, correo, subdirectiva, telefono, aceptaTratamientoDatos } = req.body;
 
         if (!documento || !nombreCompleto || !correo) {
@@ -639,10 +778,18 @@ export const listarSolicitudes = async (req: AuthRequest, res: Response): Promis
         const rechazadasCount = solicitudesEnriquecidas.filter((s) => s.estado === 'RECHAZADA').length;
         const revocadasCount = solicitudesEnriquecidas.filter((s) => s.estado === 'REVOCADA').length;
         const conAlertasCount = solicitudesEnriquecidas.filter((s) => s.alerta_seguridad?.tieneAlerta).length;
+        const estadoInscripciones = await obtenerEstadoInscripciones();
 
         res.json({
             success: true,
             total: filtradas.length,
+            estadoInscripciones: {
+                abiertas: estadoInscripciones.abiertas,
+                cerradoPor: estadoInscripciones.cerradoPor,
+                cerradoAt: estadoInscripciones.cerradoAt,
+                motivo: estadoInscripciones.motivo,
+                ultimoCambioAt: estadoInscripciones.ultimoCambioAt,
+            },
             metricas: {
                 total: solicitudesEnriquecidas.length,
                 pendientes: pendientesCount,

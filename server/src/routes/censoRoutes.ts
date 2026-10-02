@@ -15,6 +15,8 @@ import {
     aprobarSolicitud,
     rechazarSolicitud,
     aprobarSolicitudesMasivo,
+    consultarEstadoInscripciones,
+    cambiarEstadoInscripciones,
 } from '../controllers/solicitudesController';
 import { requireRol } from '../middleware/authRole';
 import { authLimiter, publicInquiryLimiter } from '../middleware/security';
@@ -22,11 +24,13 @@ import { authLimiter, publicInquiryLimiter } from '../middleware/security';
 const router = Router();
 
 // Rutas Públicas de Solicitud de Registro de Votante (Con limitación de tasa y anti-duplicados)
+router.get('/solicitudes/estado-inscripciones', consultarEstadoInscripciones);
 router.post('/solicitudes/crear', authLimiter, crearSolicitudRegistro);
 router.get('/solicitudes/estado/:documento', publicInquiryLimiter, consultarEstadoSolicitud);
 
 // Rutas de Verificación y Aprobación de Solicitudes (Rol ADMIN y AUDITOR)
 router.get('/solicitudes', requireRol(['ADMIN', 'AUDITOR']), listarSolicitudes);
+router.post('/solicitudes/toggle-inscripciones', requireRol(['ADMIN', 'AUDITOR']), cambiarEstadoInscripciones);
 router.post('/solicitudes/aprobar', requireRol(['ADMIN', 'AUDITOR']), aprobarSolicitud);
 router.post('/solicitudes/rechazar', requireRol(['ADMIN', 'AUDITOR']), rechazarSolicitud);
 router.post('/solicitudes/aprobar-masivo', requireRol(['ADMIN', 'AUDITOR']), aprobarSolicitudesMasivo);

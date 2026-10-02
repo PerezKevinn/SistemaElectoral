@@ -12,6 +12,9 @@ import {
     AlertTriangle,
     ShieldCheck,
     Ban,
+    Lock,
+    Unlock,
+    ShieldAlert,
 } from 'lucide-react';
 import { useToast } from './Toast';
 
@@ -48,6 +51,14 @@ export interface SolicitudVotante {
     creado_at: string;
 }
 
+export interface EstadoInscripcionesInfo {
+    abiertas: boolean;
+    cerradoPor?: string | null;
+    cerradoAt?: string | null;
+    motivo?: string | null;
+    ultimoCambioAt?: string | null;
+}
+
 interface PanelSolicitudesRegistroProps {
     onVolver: () => void;
     rolUsuario?: 'ADMIN' | 'AUDITOR';
@@ -64,6 +75,13 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
     const [filtroEstado, setFiltroEstado] = useState<'TODAS' | 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'REVOCADA' | 'ALERTAS'>('TODAS');
     const [busqueda, setBusqueda] = useState('');
     const [metricas, setMetricas] = useState({ total: 0, pendientes: 0, aprobadas: 0, rechazadas: 0, revocadas: 0, conAlertas: 0 });
+
+    // Estado del periodo de inscripciones
+    const [estadoInscripciones, setEstadoInscripciones] = useState<EstadoInscripcionesInfo>({ abiertas: true });
+    const [modalToggleInscripcion, setModalToggleInscripcion] = useState(false);
+    const [abrirObjetivo, setAbrirObjetivo] = useState(false);
+    const [motivoToggle, setMotivoToggle] = useState('');
+    const [procesandoToggle, setProcesandoToggle] = useState(false);
 
     // Modal de Análisis de Seguridad y Dispositivo Compartido
     const [solicitudDetalleAlerta, setSolicitudDetalleAlerta] = useState<SolicitudVotante | null>(null);
@@ -103,6 +121,9 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                 if (data.metricas) {
                     setMetricas(data.metricas);
                 }
+                if (data.estadoInscripciones) {
+                    setEstadoInscripciones(data.estadoInscripciones);
+                }
             } else {
                 throw new Error(data.error || 'Error al obtener solicitudes.');
             }
@@ -117,6 +138,49 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
     useEffect(() => {
         cargarSolicitudes();
     }, [filtroEstado]);
+
+    const handleAbrirModalToggle = (abrir: boolean) => {
+        setAbrirObjetivo(abrir);
+        setMotivoToggle(
+            abrir
+                ? 'Reapertura oficial del periodo de registro al censo electoral'
+                : 'Cierre oficial del periodo de solicitudes de inscripción para los comicios'
+        );
+        setModalToggleInscripcion(true);
+    };
+
+    const handleConfirmarToggleInscripciones = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setProcesandoToggle(true);
+        try {
+            const res = await fetch('/api/censo/solicitudes/toggle-inscripciones', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    abiertas: abrirObjetivo,
+                    motivo: motivoToggle.trim(),
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Error al actualizar el estado de las inscripciones');
+            }
+
+            if (abrirObjetivo) {
+                toast.success('El periodo de inscripciones ha sido REABIERTO. Ahora se admiten solicitudes.', 'Inscripciones Abiertas');
+            } else {
+                toast.warning('El periodo de inscripciones ha sido CERRADO. Se bloqueó la recepción de solicitudes.', 'Inscripciones Cerradas');
+            }
+
+            setModalToggleInscripcion(false);
+            cargarSolicitudes();
+        } catch (err: any) {
+            toast.error(err.message, 'Error al cambiar estado');
+        } finally {
+            setProcesandoToggle(false);
+        }
+    };
 
     // 1. Aprobar Solicitud Individual
     const handleAprobarSolicitud = async (solicitud: SolicitudVotante) => {
@@ -266,7 +330,43 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                 </div>
 
                 {/* Acciones Rápidas */}
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                    {/* Badge de Estado del Periodo */}
+                    {estadoInscripciones.abiertas ? (
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className="font-semibold">Inscripciones Abiertas</span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-300 text-xs">
+                            <Lock className="w-3.5 h-3.5 text-rose-400" />
+                            <span className="font-semibold">Inscripciones Cerradas</span>
+                        </div>
+                    )}
+
+                    {/* Botón de Abrir / Cerrar Inscripciones */}
+                    <button
+                        onClick={() => handleAbrirModalToggle(!estadoInscripciones.abiertas)}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border shadow-sm ${
+                            estadoInscripciones.abiertas
+                                ? 'bg-rose-950/70 hover:bg-rose-900 border-rose-700/60 text-rose-200'
+                                : 'bg-emerald-950/70 hover:bg-emerald-900 border-emerald-700/60 text-emerald-200'
+                        }`}
+                        title={estadoInscripciones.abiertas ? 'Bloquear recepción de solicitudes' : 'Permitir nuevas solicitudes'}
+                    >
+                        {estadoInscripciones.abiertas ? (
+                            <>
+                                <Lock className="w-3.5 h-3.5 text-rose-400" />
+                                <span>Cerrar Inscripciones</span>
+                            </>
+                        ) : (
+                            <>
+                                <Unlock className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>Reabrir Inscripciones</span>
+                            </>
+                        )}
+                    </button>
+
                     {seleccionadas.length > 0 && (
                         <button
                             onClick={handleAprobarMasivo}
@@ -293,6 +393,37 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                     </button>
                 </div>
             </div>
+
+            {/* Banner Informativo si Inscripciones están Cerradas */}
+            {!estadoInscripciones.abiertas && (
+                <div className="p-4 bg-rose-950/30 border border-rose-800/50 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in duration-200">
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 bg-rose-900/40 border border-rose-700/50 rounded-xl text-rose-300 shrink-0 mt-0.5">
+                            <Lock className="w-4 h-4" />
+                        </div>
+                        <div>
+                            <h2 className="text-xs font-bold text-rose-200 uppercase tracking-wide">
+                                Periodo de Inscripciones al Censo Cerrado
+                            </h2>
+                            <p className="text-[11px] text-rose-300/80 mt-0.5 leading-relaxed">
+                                El portal público tiene <strong>bloqueada</strong> la recepción de nuevas solicitudes. Los votantes solo pueden consultar el estado de radicados previos. Usted puede continuar evaluando y aprobando las solicitudes pendientes de la lista.
+                            </p>
+                            {estadoInscripciones.motivo && (
+                                <p className="text-[10px] text-slate-400 mt-1 font-mono italic">
+                                    Motivo registrado: "{estadoInscripciones.motivo}" {estadoInscripciones.cerradoAt ? `(${new Date(estadoInscripciones.cerradoAt).toLocaleString()})` : ''}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={() => handleAbrirModalToggle(true)}
+                        className="self-start sm:self-auto px-3 py-1.5 bg-rose-900/50 hover:bg-rose-800/60 text-rose-200 border border-rose-700/60 rounded-xl text-[11px] font-bold transition cursor-pointer whitespace-nowrap"
+                    >
+                        Reabrir Recepción
+                    </button>
+                </div>
+            )}
 
             {/* Metricas Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
@@ -920,6 +1051,99 @@ export const PanelSolicitudesRegistro: React.FC<PanelSolicitudesRegistroProps> =
                                     className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow-md"
                                 >
                                     {rechazando ? 'Procesando...' : 'Confirmar Rechazo'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Confirmación para Abrir / Cerrar Inscripciones */}
+            {modalToggleInscripcion && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+                    <div className="max-w-md w-full glass-panel border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden p-5 sm:p-6 space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                            <div className="flex items-center gap-2.5">
+                                <div className={`p-2 rounded-xl border ${
+                                    abrirObjetivo
+                                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                        : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                                }`}>
+                                    {abrirObjetivo ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                                </div>
+                                <div>
+                                    <h3 className="text-sm sm:text-base font-bold text-white">
+                                        {abrirObjetivo ? 'Reapertura de Inscripciones' : 'Cierre Oficial de Inscripciones'}
+                                    </h3>
+                                    <p className="text-[11px] text-slate-400">Control institucional del censo electoral</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setModalToggleInscripcion(false)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-white transition"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className={`p-3.5 rounded-xl border text-xs leading-relaxed ${
+                            abrirObjetivo
+                                ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-300'
+                                : 'bg-rose-950/20 border-rose-800/40 text-rose-300'
+                        }`}>
+                            <div className="flex items-start gap-2">
+                                <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+                                <div>
+                                    {abrirObjetivo ? (
+                                        <p>
+                                            Al reabrir el proceso, el formulario de radicación pública volverá a estar <strong>habilitado</strong> para que cualquier elector envíe nuevas solicitudes.
+                                        </p>
+                                    ) : (
+                                        <p>
+                                            Al cerrar el proceso, el sistema <strong>bloqueará inmediatamente</strong> la radicación de nuevas solicitudes. Los votantes solo podrán consultar el estado de radicados anteriores.
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleConfirmarToggleInscripciones} className="space-y-3.5 text-xs">
+                            <div>
+                                <label className="block text-slate-300 font-semibold mb-1">
+                                    Motivo / Justificación para la Bitácora de Auditoría *
+                                </label>
+                                <textarea
+                                    required
+                                    rows={3}
+                                    value={motivoToggle}
+                                    onChange={(e) => setMotivoToggle(e.target.value)}
+                                    placeholder="Indique la justificación institucional..."
+                                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg text-white outline-none"
+                                />
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setModalToggleInscripcion(false)}
+                                    className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-semibold text-slate-300 transition cursor-pointer"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={procesandoToggle || !motivoToggle.trim()}
+                                    className={`flex-1 py-2.5 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-md disabled:opacity-50 ${
+                                        abrirObjetivo
+                                            ? 'bg-emerald-600 hover:bg-emerald-500'
+                                            : 'bg-rose-600 hover:bg-rose-500'
+                                    }`}
+                                >
+                                    {procesandoToggle
+                                        ? 'Registrando en Auditoría...'
+                                        : abrirObjetivo
+                                        ? 'Confirmar Reapertura'
+                                        : 'Confirmar Cierre'}
                                 </button>
                             </div>
                         </form>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     UserPlus,
     Search,
@@ -16,6 +16,7 @@ import {
     Building2,
     FileText,
     Ban,
+    Lock,
     PictureInPicture2,
     Scale,
     ExternalLink,
@@ -34,6 +35,31 @@ interface ModalSolicitudRegistroProps {
 export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ isOpen, onClose, onAbrirTutorial }) => {
     const toast = useToast();
     const [pestaña, setPestaña] = useState<'NUEVA' | 'CONSULTAR'>('NUEVA');
+
+    // Estado del periodo de inscripciones
+    const [inscripcionesAbiertas, setInscripcionesAbiertas] = useState<boolean>(true);
+    const [infoCierre, setInfoCierre] = useState<{ cerradoPor?: string; cerradoAt?: string; motivo?: string } | null>(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            fetch('/api/censo/solicitudes/estado-inscripciones')
+                .then((res) => res.json())
+                .then((data) => {
+                    if (data.success) {
+                        const abiertas = data.inscripcionesAbiertas ?? true;
+                        setInscripcionesAbiertas(abiertas);
+                        if (!abiertas) {
+                            setInfoCierre({
+                                cerradoPor: data.cerradoPor,
+                                cerradoAt: data.cerradoAt,
+                                motivo: data.motivo,
+                            });
+                        }
+                    }
+                })
+                .catch((err) => console.error('Error al obtener estado de inscripciones:', err));
+        }
+    }, [isOpen]);
 
     // Estados Formulario Solicitud (Los mismos 5 campos estipulados)
     const [form, setForm] = useState({
@@ -232,12 +258,17 @@ export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ 
                         type="button"
                         onClick={() => { setPestaña('NUEVA'); setErrorMsg(null); }}
                         className={`py-2 px-3 rounded-lg font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${pestaña === 'NUEVA'
-                            ? 'bg-emerald-600 text-white shadow-md'
+                            ? (inscripcionesAbiertas ? 'bg-emerald-600 text-white shadow-md' : 'bg-rose-900/80 text-rose-200 border border-rose-700/60 shadow-md')
                             : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
                             }`}
                     >
                         <UserPlus className="w-3.5 h-3.5" />
                         <span>Nueva Solicitud</span>
+                        {!inscripcionesAbiertas && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-950 text-rose-300 border border-rose-800">
+                                Cerrado
+                            </span>
+                        )}
                     </button>
                     <button
                         type="button"
@@ -330,6 +361,73 @@ export const ModalSolicitudRegistro: React.FC<ModalSolicitudRegistroProps> = ({ 
                                         className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow-md"
                                     >
                                         Entendido y Cerrar
+                                    </button>
+                                </div>
+                            </div>
+                        ) : !inscripcionesAbiertas ? (
+                            /* Pantalla de Aviso de Inscripciones Cerradas */
+                            <div className="space-y-4 text-center py-3 animate-in fade-in duration-200">
+                                <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mx-auto text-rose-400 shadow-xl">
+                                    <Lock className="w-8 h-8" />
+                                </div>
+
+                                <div>
+                                    <span className="inline-block px-3 py-1 rounded-full text-[10px] font-mono font-bold bg-rose-950 text-rose-300 border border-rose-800/60 mb-2">
+                                        RECEPCIÓN DE SOLICITUDES CERRADA
+                                    </span>
+                                    <h3 className="text-base sm:text-lg font-bold text-white">
+                                        Periodo de Inscripción Finalizado
+                                    </h3>
+                                    <p className="text-xs text-slate-400 max-w-md mx-auto mt-1 leading-relaxed">
+                                        La Mesa de Auditoría y el Tribunal Electoral han concluido oficialmente el plazo de radicación de solicitudes de censo. Ya no se admiten nuevas solicitudes de registro.
+                                    </p>
+                                </div>
+
+                                {infoCierre && (
+                                    <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 text-left text-xs space-y-1.5">
+                                        <div className="text-slate-400 flex items-center justify-between text-[11px]">
+                                            <span>Estado Oficial:</span>
+                                            <span className="font-mono text-rose-400 font-bold">CERRADO</span>
+                                        </div>
+                                        {infoCierre.cerradoAt && (
+                                            <div className="text-slate-400 flex items-center justify-between text-[11px]">
+                                                <span>Fecha de Cierre:</span>
+                                                <span className="font-mono text-slate-300">
+                                                    {new Date(infoCierre.cerradoAt).toLocaleString()}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {infoCierre.motivo && (
+                                            <div className="text-[11px] text-slate-300 bg-slate-900/90 p-2.5 rounded-lg border border-slate-800 mt-1">
+                                                <span className="text-slate-500 block mb-0.5 text-[10px]">Justificación de Auditoría:</span>
+                                                <span className="italic font-medium">"{infoCierre.motivo}"</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="p-3.5 rounded-xl bg-cyan-950/30 border border-cyan-900/40 text-left flex items-start gap-2.5 text-xs text-slate-300">
+                                    <Search className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+                                    <div className="text-[11px] leading-relaxed text-slate-300">
+                                        ¿Radicó su solicitud previamente? Ingrese su número de documento en la pestaña <strong>Consultar Radicado</strong> para verificar el dictamen de los auditores y el estado de sus credenciales.
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPestaña('CONSULTAR')}
+                                        className="flex-1 py-3 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-lg shadow-cyan-950/50 flex items-center justify-center gap-1.5"
+                                    >
+                                        <Search className="w-3.5 h-3.5" />
+                                        <span>Consultar Mi Radicado Previo →</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={onClose}
+                                        className="py-3 px-4 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl text-xs font-semibold transition cursor-pointer"
+                                    >
+                                        Cerrar
                                     </button>
                                 </div>
                             </div>

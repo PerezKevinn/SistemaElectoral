@@ -190,12 +190,31 @@ const ACCIONES_INFO: Record<
         icon: KeyRound,
         categoria: 'SEGURIDAD',
     },
+    CIERRE_INSCRIPCIONES: {
+        titulo: 'Cierre de Inscripciones al Censo',
+        descripcion: 'Se clausuró la recepción de solicitudes públicas de registro al censo electoral.',
+        badgeClass: 'bg-rose-950/80 border-rose-500/50 text-rose-300',
+        borderClass: 'hover:border-rose-500/40',
+        icon: Lock,
+        categoria: 'VOTANTES',
+    },
+    APERTURA_INSCRIPCIONES: {
+        titulo: 'Apertura de Inscripciones al Censo',
+        descripcion: 'Se habilitó la recepción pública de solicitudes de registro al censo electoral.',
+        badgeClass: 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300',
+        borderClass: 'hover:border-emerald-500/40',
+        icon: UserPlus,
+        categoria: 'VOTANTES',
+    },
 };
 
 const DICCIONARIO_CLAVES: Record<
     string,
     { label: string; isMonospace?: boolean; isFullWidth?: boolean }
 > = {
+    inscripciones_abiertas: { label: 'Inscripciones Abiertas' },
+    motivo: { label: 'Motivo / Justificación', isFullWidth: true },
+    rol_ejecutor: { label: 'Rol del Ejecutor' },
     documento: { label: 'Documento de Identidad' },
     documento_identidad: { label: 'Documento de Identidad' },
     correo: { label: 'Correo Electrónico' },
@@ -224,7 +243,6 @@ const DICCIONARIO_CLAVES: Record<
     estadoPrevio: { label: 'Estado Previo' },
     candidatosHabilitados: { label: 'Candidaturas' },
     totalVotosSellados: { label: 'Total Votos' },
-    motivo: { label: 'Motivo', isFullWidth: true },
     observaciones: { label: 'Observaciones', isFullWidth: true },
     subdirectiva: { label: 'Subdirectiva' },
     telefono: { label: 'Teléfono' },

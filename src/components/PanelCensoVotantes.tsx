@@ -20,6 +20,7 @@ import {
     AlertTriangle,
     UserCheck,
     Trash2,
+    ChevronDown,
 } from 'lucide-react';
 import { useToast } from './Toast';
 
@@ -55,6 +56,7 @@ interface PanelCensoVotantesProps {
 export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver, onVerSolicitudes }) => {
     const toast = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const exportDropdownRef = useRef<HTMLDivElement>(null);
 
     const [pestana, setPestana] = useState<'CARGA' | 'LISTA'>('CARGA');
 
@@ -70,9 +72,11 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
         correosSimulados: number;
     } | null>(null);
 
-    // Estados de Lista de Padrón
+    // Estados de Lista de Padrón y Exportación
     const [votantes, setVotantes] = useState<VotanteCenso[]>([]);
     const [cargandoLista, setCargandoLista] = useState(false);
+    const [exportandoCenso, setExportandoCenso] = useState(false);
+    const [menuExportarAbierto, setMenuExportarAbierto] = useState(false);
     const [busqueda, setBusqueda] = useState('');
     const [filtroEstado, setFiltroEstado] = useState<'TODOS' | 'HABILITADOS' | 'INHABILITADOS' | 'VOTARON' | 'PENDIENTES'>('TODOS');
 
@@ -100,6 +104,21 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
             'Authorization': `Bearer ${token}`,
         };
     };
+
+    // Cerrar menú de exportación al hacer clic fuera
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+                setMenuExportarAbierto(false);
+            }
+        };
+        if (menuExportarAbierto) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [menuExportarAbierto]);
 
     // 1. Descargar Plantilla Oficial (.xlsx / .csv)
     const descargarPlantilla = (formato: 'xlsx' | 'csv') => {
@@ -131,6 +150,103 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
             XLSX.writeFile(wb, 'Plantilla_Censo_Votantes_Oficial.csv', { bookType: 'csv' });
         }
         toast.info(`Plantilla ${formato.toUpperCase()} descargada.`);
+    };
+
+    // 1.1 Exportar Padrón de Votantes Real a Excel / CSV
+    const exportarCenso = async (formato: 'xlsx' | 'csv', soloFiltrados: boolean = false) => {
+        setExportandoCenso(true);
+        setMenuExportarAbierto(false);
+        try {
+            let url = `/api/censo/exportar?formato=${formato}`;
+            if (soloFiltrados) {
+                if (filtroEstado !== 'TODOS') url += `&estado=${filtroEstado}`;
+                if (busqueda.trim()) url += `&busqueda=${encodeURIComponent(busqueda.trim())}`;
+                url += `&todos=false`;
+            } else {
+                url += `&todos=true`;
+            }
+
+            const res = await fetch(url, { headers: getAuthHeaders() });
+            const data = await res.json();
+
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Error al obtener los datos del censo para exportar.');
+            }
+
+            const registros: VotanteCenso[] = data.votantes || [];
+
+            if (registros.length === 0) {
+                toast.warning('No hay electores que coincidan con la consulta para exportar.', 'Sin Registros');
+                return;
+            }
+
+            // Encabezados formales de exportación
+            const headers = [
+                'No. Identificación',
+                'Nombres',
+                'Apellidos',
+                'Nombre Completo',
+                'Correo Institucional',
+                'Estado Habilitación',
+                'Estado Sufragio',
+                'Autenticación 2FA',
+                'Fecha Emisión Token / Voto',
+                'Fecha Registro en Padrón',
+            ];
+
+            const rows = registros.map((v) => [
+                v.documento_identidad,
+                v.nombres || '',
+                v.apellidos || '',
+                `${v.nombres || ''} ${v.apellidos || ''}`.trim(),
+                v.correo_institucional,
+                v.esta_habilitado ? 'HABILITADO' : 'INHABILITADO',
+                v.ha_solicitado_token ? 'VOTO EMITIDO' : 'PENDIENTE',
+                v.is_mfa_enabled ? 'ACTIVADO' : 'NO CONFIGURADO',
+                v.token_emitido_at ? new Date(v.token_emitido_at).toLocaleString('es-CO') : 'PENDIENTE',
+                v.creado_at ? new Date(v.creado_at).toLocaleString('es-CO') : 'N/A',
+            ]);
+
+            const wsData = [headers, ...rows];
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+            // Anchos de columna óptimos
+            ws['!cols'] = [
+                { wch: 20 }, // No. Identificación
+                { wch: 22 }, // Nombres
+                { wch: 22 }, // Apellidos
+                { wch: 35 }, // Nombre Completo
+                { wch: 35 }, // Correo Institucional
+                { wch: 22 }, // Estado Habilitación
+                { wch: 18 }, // Estado Sufragio
+                { wch: 20 }, // Autenticación 2FA
+                { wch: 26 }, // Fecha Emisión Token
+                { wch: 26 }, // Fecha Registro
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Padron_Electoral');
+
+            const fechaStr = new Date().toISOString().split('T')[0];
+            const sufijo = soloFiltrados ? `_Filtrado_${filtroEstado}` : '_Completo';
+            const nombreArchivo = `Censo_Electoral_Oficial${sufijo}_${fechaStr}.${formato}`;
+
+            if (formato === 'xlsx') {
+                XLSX.writeFile(wb, nombreArchivo);
+            } else {
+                XLSX.writeFile(wb, nombreArchivo, { bookType: 'csv' });
+            }
+
+            toast.success(
+                `Se exportaron exitosamente ${registros.length} electores en formato ${formato.toUpperCase()}.`,
+                'Censo Exportado'
+            );
+        } catch (err: any) {
+            console.error('Error al exportar censo:', err);
+            toast.error(err.message || 'Fallo al exportar el censo electoral.', 'Error de Exportación');
+        } finally {
+            setExportandoCenso(false);
+        }
     };
 
     // 2. Procesar Archivo Excel / CSV subido
@@ -727,6 +843,89 @@ export const PanelCensoVotantes: React.FC<PanelCensoVotantesProps> = ({ onVolver
                             >
                                 <RefreshCw className={`w-3.5 h-3.5 ${cargandoLista ? 'animate-spin' : ''}`} />
                             </button>
+
+                            {/* Menú Desplegable Exportar Censo a Excel / CSV */}
+                            <div className="relative" ref={exportDropdownRef}>
+                                <button
+                                    onClick={() => setMenuExportarAbierto(!menuExportarAbierto)}
+                                    disabled={exportandoCenso}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-950/70 hover:bg-emerald-900/90 text-emerald-300 border border-emerald-800/60 rounded-lg text-xs font-semibold transition cursor-pointer shadow-sm disabled:opacity-50"
+                                    title="Exportar censo electoral a Excel o CSV"
+                                >
+                                    {exportandoCenso ? (
+                                        <>
+                                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                                            <span>Exportando...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                                            <span>Exportar Censo</span>
+                                            <ChevronDown className={`w-3 h-3 text-emerald-400/80 transition-transform duration-200 ${menuExportarAbierto ? 'rotate-180' : ''}`} />
+                                        </>
+                                    )}
+                                </button>
+
+                                {menuExportarAbierto && (
+                                    <div className="absolute right-0 mt-1.5 w-64 bg-slate-900 border border-slate-700/90 rounded-xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-1">
+                                        <div className="px-2.5 py-1.5 text-[10px] uppercase font-mono text-slate-400 border-b border-slate-800 flex items-center justify-between">
+                                            <span>Exportar Padrón</span>
+                                            <Sparkles className="w-3 h-3 text-emerald-400" />
+                                        </div>
+
+                                        <button
+                                            onClick={() => exportarCenso('xlsx', false)}
+                                            className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-emerald-950/50 text-slate-200 text-xs flex items-center gap-2.5 transition cursor-pointer group"
+                                        >
+                                            <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                                            <div>
+                                                <span className="font-semibold block text-emerald-300">Padrón Completo (.xlsx)</span>
+                                                <span className="text-[10px] text-slate-400 block">Todos los electores registrados</span>
+                                            </div>
+                                        </button>
+
+                                        <button
+                                            onClick={() => exportarCenso('csv', false)}
+                                            className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-slate-800/70 text-slate-300 text-xs flex items-center gap-2.5 transition cursor-pointer group"
+                                        >
+                                            <Download className="w-4 h-4 text-slate-400 shrink-0 group-hover:scale-110 transition-transform" />
+                                            <div>
+                                                <span className="font-semibold block text-slate-200">Padrón Completo (.csv)</span>
+                                                <span className="text-[10px] text-slate-400 block">Formato plano delimitado</span>
+                                            </div>
+                                        </button>
+
+                                        {(filtroEstado !== 'TODOS' || busqueda.trim() !== '') && (
+                                            <>
+                                                <div className="border-t border-slate-800/80 my-1 pt-1"></div>
+                                                <div className="px-2 py-0.5 text-[9px] uppercase font-mono text-indigo-400 truncate">
+                                                    Vista Filtrada ({filtroEstado !== 'TODOS' ? filtroEstado : 'Búsqueda'})
+                                                </div>
+                                                <button
+                                                    onClick={() => exportarCenso('xlsx', true)}
+                                                    className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-indigo-950/50 text-slate-200 text-xs flex items-center gap-2.5 transition cursor-pointer group"
+                                                >
+                                                    <FileSpreadsheet className="w-4 h-4 text-indigo-400 shrink-0 group-hover:scale-110 transition-transform" />
+                                                    <div>
+                                                        <span className="font-semibold block text-indigo-300">Vista Filtrada (.xlsx)</span>
+                                                        <span className="text-[10px] text-slate-400 block">Solo electores coincidentes</span>
+                                                    </div>
+                                                </button>
+                                                <button
+                                                    onClick={() => exportarCenso('csv', true)}
+                                                    className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-slate-800/70 text-slate-300 text-xs flex items-center gap-2.5 transition cursor-pointer group"
+                                                >
+                                                    <Download className="w-4 h-4 text-slate-400 shrink-0 group-hover:scale-110 transition-transform" />
+                                                    <div>
+                                                        <span className="font-semibold block text-slate-200">Vista Filtrada (.csv)</span>
+                                                        <span className="text-[10px] text-slate-400 block">Solo electores coincidentes</span>
+                                                    </div>
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
 
                             <button
                                 onClick={() => setModalIndividualAbierto(true)}

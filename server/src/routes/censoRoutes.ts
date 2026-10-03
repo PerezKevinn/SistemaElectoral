@@ -3,6 +3,7 @@ import {
     cargarCensoMasivo,
     registrarVotanteIndividual,
     listarVotantesCenso,
+    exportarCenso,
     reenviarCredencialesVotante,
     cambiarEstadoHabilitacion,
     obtenerEstadoSmtp,
@@ -39,6 +40,7 @@ router.post('/solicitudes/aprobar-masivo', requireRol(['ADMIN', 'AUDITOR']), apr
 router.post('/cargar-masivo', requireRol(['ADMIN']), cargarCensoMasivo);
 router.post('/crear', requireRol(['ADMIN']), registrarVotanteIndividual);
 router.get('/votantes', requireRol(['ADMIN', 'AUDITOR']), listarVotantesCenso);
+router.get('/exportar', requireRol(['ADMIN', 'AUDITOR']), exportarCenso);
 router.get('/estado-smtp', requireRol(['ADMIN', 'AUDITOR']), obtenerEstadoSmtp);
 router.post('/reenviar-credencial', requireRol(['ADMIN']), reenviarCredencialesVotante);
 router.post('/estado', requireRol(['ADMIN']), cambiarEstadoHabilitacion);

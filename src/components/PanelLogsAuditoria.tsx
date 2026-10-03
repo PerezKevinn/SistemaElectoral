@@ -206,6 +206,14 @@ const ACCIONES_INFO: Record<
         icon: UserPlus,
         categoria: 'VOTANTES',
     },
+    EXPORTACION_CENSO: {
+        titulo: 'Exportación de Censo Electoral',
+        descripcion: 'Descarga y exportación oficial del padrón de votantes a archivo Excel / CSV.',
+        badgeClass: 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300',
+        borderClass: 'hover:border-emerald-500/40',
+        icon: FileSpreadsheet,
+        categoria: 'VOTANTES',
+    },
 };
 
 const DICCIONARIO_CLAVES: Record<
@@ -250,6 +258,10 @@ const DICCIONARIO_CLAVES: Record<
     id_votante: { label: 'ID Votante', isMonospace: true },
     id_eleccion: { label: 'ID Elección', isMonospace: true },
     total_registros: { label: 'Total Registros' },
+    total_exportados: { label: 'Total Votantes Exportados' },
+    formato: { label: 'Formato de Exportación' },
+    filtro_estado: { label: 'Filtro de Estado' },
+    busqueda_aplicada: { label: 'Criterio de Búsqueda' },
     registros_exitosos: { label: 'Registros Exitosos' },
     registros_fallidos: { label: 'Registros Fallidos' },
     aprobado_por: { label: 'Aprobado Por' },

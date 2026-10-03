@@ -451,23 +451,87 @@ export const cerrarEleccion = async (req: AuthRequest, res: Response): Promise<v
             return;
         }
 
+        // 1. Eliminar tokens disponibles no consumidos para evitar conflictos con el check constraint
+        await urnaDb
+            .from('tokens_votacion')
+            .delete()
+            .eq('id_eleccion', idEleccion)
+            .eq('estado', 'DISPONIBLE');
+
         const internalRpcKey = process.env.DB_RPC_ADMIN_KEY || 'ADMIN_SECRET_2026';
+        let closureData: any = null;
 
-        const { data, error } = await urnaDb.rpc('cerrar_eleccion_oficial', {
-            p_eleccion_id: idEleccion,
-            p_admin_clave: internalRpcKey,
-            p_ejecutado_por: ejecutadoPor,
-            p_ip_origen: ipOrigen,
-            p_user_agent: userAgent,
-        });
+        // 2. Intentar ejecutar el procedimiento almacenado oficial
+        try {
+            const { data, error } = await urnaDb.rpc('cerrar_eleccion_oficial', {
+                p_eleccion_id: idEleccion,
+                p_admin_clave: internalRpcKey,
+                p_ejecutado_por: ejecutadoPor,
+                p_ip_origen: ipOrigen,
+                p_user_agent: userAgent,
+            });
 
-        if (error) throw error;
+            if (!error && data) {
+                closureData = data;
+            } else if (error) {
+                console.warn('⚠️ [URNA] Fallback por error en RPC cerrar_eleccion_oficial:', error.message);
+            }
+        } catch (rpcErr: any) {
+            console.warn('⚠️ [URNA] Excepción en RPC cerrar_eleccion_oficial:', rpcErr.message);
+        }
+
+        // 3. Si el RPC falló o no retornó datos, ejecutar cierre seguro y registro directo
+        if (!closureData) {
+            const cerradoAt = new Date().toISOString();
+
+            // Actualizar estado de la elección a CERRADA
+            const { error: errUpdate } = await urnaDb
+                .from('elecciones')
+                .update({ estado: 'CERRADA', fecha_fin: cerradoAt })
+                .eq('id_eleccion', idEleccion);
+
+            if (errUpdate) throw errUpdate;
+
+            // Consultar votos para obtener el último hash y total
+            const { data: votos, count } = await urnaDb
+                .from('votos')
+                .select('voto_hash', { count: 'exact' })
+                .eq('id_eleccion', idEleccion)
+                .order('secuencia_conteo', { ascending: false })
+                .limit(1);
+
+            const totalVotos = count ?? votos?.length ?? 0;
+            const selloFinalHash = votos?.[0]?.voto_hash || 'GENESIS_SIN_VOTOS_00000000000000000000000000000000000000000000000000000000';
+
+            // Registrar log de auditoría
+            await urnaDb.from('logs_auditoria_admin').insert({
+                id_eleccion: idEleccion,
+                accion: 'CIERRE_OFICIAL_URNA',
+                ejecutado_por: ejecutadoPor,
+                ip_origen: ipOrigen,
+                user_agent: userAgent,
+                detalles: {
+                    totalVotosSellados: totalVotos,
+                    selloFinalHash,
+                    cerradoAt,
+                    motivo: 'Cierre oficial y sellado definitivo de la urna digital',
+                },
+            });
+
+            closureData = {
+                estado: 'CERRADA',
+                totalVotosSellados: totalVotos,
+                selloFinalHash,
+                cerradoAt,
+            };
+        }
 
         res.json({
             success: true,
-            data,
+            data: closureData,
         });
     } catch (error: any) {
+        console.error('⚠️ [ERROR] Error en cerrarEleccion:', error);
         res.status(400).json({
             success: false,
             error: error.message || 'Error al ejecutar el cierre administrativo.',

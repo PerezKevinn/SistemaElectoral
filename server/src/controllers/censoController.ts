@@ -658,3 +658,75 @@ export const eliminarVotante = async (req: AuthRequest, res: Response): Promise<
         });
     }
 };
+
+/**
+ * 8. Exportar censo electoral completo o filtrado para descarga en Excel/CSV
+ * Registra formalmente la acción en la bitácora de auditoría con la metadata de la consulta.
+ */
+export const exportarCenso = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { busqueda, estado, formato = 'xlsx', todos = 'false' } = req.query;
+        const usuario = req.usuario;
+        const ejecutadoPor = usuario?.nombre ? `${usuario.nombre} (${usuario.rol})` : (usuario?.rol || 'ADMIN_OFICIAL');
+
+        let query = censoDb
+            .from('votantes')
+            .select('id_votante, documento_identidad, correo_institucional, nombres, apellidos, esta_habilitado, ha_solicitado_token, is_mfa_enabled, token_emitido_at, creado_at')
+            .order('creado_at', { ascending: false });
+
+        const exportarTodos = todos === 'true';
+
+        if (!exportarTodos && estado) {
+            if (estado === 'HABILITADOS') {
+                query = query.eq('esta_habilitado', true);
+            } else if (estado === 'INHABILITADOS') {
+                query = query.eq('esta_habilitado', false);
+            } else if (estado === 'VOTARON') {
+                query = query.eq('ha_solicitado_token', true);
+            } else if (estado === 'PENDIENTES') {
+                query = query.eq('ha_solicitado_token', false);
+            }
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        let filtrados = data || [];
+        if (!exportarTodos && busqueda && typeof busqueda === 'string' && busqueda.trim() !== '') {
+            const termino = busqueda.trim().toLowerCase();
+            filtrados = filtrados.filter((v) =>
+                v.documento_identidad?.toLowerCase().includes(termino) ||
+                v.nombres?.toLowerCase().includes(termino) ||
+                v.apellidos?.toLowerCase().includes(termino) ||
+                v.correo_institucional?.toLowerCase().includes(termino)
+            );
+        }
+
+        // Registrar evento en bitácora de auditoría administrativa
+        await registrarAuditoria(
+            'EXPORTACION_CENSO',
+            ejecutadoPor,
+            req,
+            {
+                total_exportados: filtrados.length,
+                formato: String(formato).toUpperCase(),
+                filtro_estado: exportarTodos ? 'TODOS (PADRÓN COMPLETO)' : (estado || 'TODOS'),
+                busqueda_aplicada: (!exportarTodos && busqueda) ? String(busqueda) : null,
+                rol_ejecutor: usuario?.rol || 'ADMIN',
+            }
+        );
+
+        res.json({
+            success: true,
+            total: filtrados.length,
+            votantes: filtrados,
+        });
+    } catch (err: any) {
+        console.error('Error en exportarCenso:', err);
+        res.status(500).json({
+            success: false,
+            error: err.message || 'Error al exportar el censo electoral.',
+        });
+    }
+};
+

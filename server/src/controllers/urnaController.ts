@@ -1,7 +1,8 @@
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import { urnaDb, censoDb } from '../config/supabase';
 import { Request, Response } from 'express';
-import { AuthRequest } from '../middleware/authRole';
+import { AuthRequest, UsuarioPayload } from '../middleware/authRole';
 import { validarUUID, validarHexToken } from '../middleware/security';
 import { obtenerIpCliente, obtenerTelemetriaDispositivo } from '../utils/telemetry';
 
@@ -256,12 +257,89 @@ export const verificarComprobante = async (req: Request, res: Response): Promise
     }
 };
 
-export const crearEleccion = async (req: Request, res: Response): Promise<void> => {
+/**
+ * Valida que la contraseña de confirmación administrativa coincida exactamente
+ * con la contraseña de inicio de sesión del usuario Administrador en sesión.
+ */
+export const verificarPasswordAdmin = async (
+    usuario?: UsuarioPayload,
+    passwordIngresada?: string
+): Promise<boolean> => {
+    try {
+        if (!usuario || !passwordIngresada || typeof passwordIngresada !== 'string') {
+            return false;
+        }
+
+        const password = passwordIngresada.trim();
+        if (!password) return false;
+
+        // 1. Verificación de Super Administrador (si está configurado por entorno)
+        const superAdminDoc = process.env.SUPER_ADMIN_DOCUMENTO?.trim();
+        const superAdminPass = process.env.SUPER_ADMIN_PASSWORD?.trim();
+        const superAdminHash = process.env.SUPER_ADMIN_PASSWORD_HASH?.trim();
+
+        if (
+            usuario.id === 'SUPER_ADMIN_ROOT' ||
+            usuario.esSuperAdmin ||
+            (superAdminDoc && usuario.documento?.toLowerCase() === superAdminDoc.toLowerCase())
+        ) {
+            if (superAdminHash) {
+                return await bcrypt.compare(password, superAdminHash);
+            }
+            if (superAdminPass) {
+                if (password.length !== superAdminPass.length) return false;
+                return (
+                    crypto.timingSafeEqual(
+                        Buffer.from(password),
+                        Buffer.from(superAdminPass)
+                    ) && password === superAdminPass
+                );
+            }
+            return false;
+        }
+
+        // 2. Verificación de Administrador en Base de Datos (personal_electoral)
+        let query = censoDb
+            .from('personal_electoral')
+            .select('id, documento_identidad, password_hash, esta_activo, rol');
+
+        if (usuario.id && usuario.id !== 'SUPER_ADMIN_ROOT') {
+            query = query.eq('id', usuario.id);
+        } else if (usuario.documento) {
+            query = query.eq('documento_identidad', usuario.documento.trim());
+        } else {
+            return false;
+        }
+
+        const { data: staff, error } = await query.maybeSingle();
+
+        if (error || !staff || !staff.esta_activo || staff.rol !== 'ADMIN') {
+            return false;
+        }
+
+        return await bcrypt.compare(password, staff.password_hash);
+    } catch (err) {
+        console.error('Error al validar contraseña de administrador:', err);
+        return false;
+    }
+};
+
+export const crearEleccion = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { titulo, descripcion, candidatos, adminClave } = req.body;
 
         if (!titulo || !candidatos || !Array.isArray(candidatos) || !adminClave) {
-            res.status(400).json({ success: false, error: 'Datos incompletos para crear la elección.' });
+            res.status(400).json({ success: false, error: 'Datos incompletos para crear la elección. Ingrese título, candidatos y su contraseña de administrador.' });
+            return;
+        }
+
+        // Validar que la contraseña ingresada coincida con la de inicio de sesión del Administrador
+        const passwordValida = await verificarPasswordAdmin(req.usuario, adminClave);
+        if (!passwordValida) {
+            res.status(401).json({
+                success: false,
+                error: 'Contraseña de administrador incorrecta. Ingrese la misma contraseña con la que inició sesión.',
+            });
             return;
         }
 
@@ -288,7 +366,17 @@ export const abrirEleccion = async (req: AuthRequest, res: Response): Promise<vo
         const { ip: ipOrigen, userAgent } = obtenerTelemetriaDispositivo(req);
 
         if (!eleccionId || !adminClave) {
-            res.status(400).json({ success: false, error: 'Se requiere eleccionId y adminClave.' });
+            res.status(400).json({ success: false, error: 'Se requiere eleccionId y su contraseña de administrador.' });
+            return;
+        }
+
+        // Validar que la contraseña ingresada coincida con la de inicio de sesión del Administrador
+        const passwordValida = await verificarPasswordAdmin(req.usuario, adminClave);
+        if (!passwordValida) {
+            res.status(401).json({
+                success: false,
+                error: 'Contraseña de administrador incorrecta. Ingrese la misma contraseña con la que inició sesión.',
+            });
             return;
         }
 
@@ -319,7 +407,17 @@ export const cerrarEleccion = async (req: AuthRequest, res: Response): Promise<v
         if (!eleccionId || !adminClave) {
             res.status(400).json({
                 success: false,
-                error: 'Se requiere el ID de la elección y la clave administrativa de cierre.',
+                error: 'Se requiere el ID de la elección y su contraseña de administrador.',
+            });
+            return;
+        }
+
+        // Validar que la contraseña ingresada coincida con la de inicio de sesión del Administrador
+        const passwordValida = await verificarPasswordAdmin(req.usuario, adminClave);
+        if (!passwordValida) {
+            res.status(401).json({
+                success: false,
+                error: 'Contraseña de administrador incorrecta. Ingrese la misma contraseña con la que inició sesión.',
             });
             return;
         }

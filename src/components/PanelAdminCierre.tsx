@@ -97,16 +97,19 @@ export const PanelAdminCierre: React.FC<PanelAdminCierreProps> = ({
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-2">
-                            Clave de Custodia de la Autoridad Electoral
-                        </label>
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="block text-xs font-semibold text-slate-300">
+                                Contraseña de Confirmación de Administrador
+                            </label>
+                            <span className="text-[10px] font-mono text-slate-500">Clave de tu cuenta</span>
+                        </div>
                         <div className="relative">
                             <KeySquare className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5 pointer-events-none" />
                             <input
                                 type={mostrarClave ? 'text' : 'password'}
                                 value={clave}
                                 onChange={(e) => setClave(e.target.value)}
-                                placeholder="Ingresa la clave secreta de administración"
+                                placeholder="Ingresa tu contraseña de inicio de sesión de Admin"
                                 className="w-full pl-10 pr-10 py-3 bg-slate-950/80 border border-slate-800 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl text-xs sm:text-sm text-slate-200 placeholder-slate-600 outline-none transition font-mono"
                                 required
                             />
@@ -120,7 +123,9 @@ export const PanelAdminCierre: React.FC<PanelAdminCierreProps> = ({
                                 {mostrarClave ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                         </div>
-                        <span className="text-[11px] text-slate-500 mt-1.5 block">Ingrese la clave de custodia configurada por la mesa de auditoría.</span>
+                        <span className="text-[11px] text-slate-500 mt-1.5 block">
+                            Por seguridad institucional, ingresa la misma contraseña con la que iniciaste sesión como Administrador para autorizar el sellado definitivo.
+                        </span>
                     </div>
 
                     {errorMsg && (

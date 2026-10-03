@@ -93,8 +93,21 @@ function AppContent() {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.success && data.elecciones) {
+        if (data.success && Array.isArray(data.elecciones)) {
           setListaElecciones(data.elecciones);
+          if (data.elecciones.length > 0) {
+            setEleccionId((currentId) => {
+              const encontrada = data.elecciones.find((e: EleccionInfo) => e.id_eleccion === currentId);
+              if (encontrada) {
+                setEleccionActual(encontrada);
+                return currentId;
+              }
+              const preferida = data.elecciones.find((e: EleccionInfo) => e.estado === 'ABIERTA') || data.elecciones[0];
+              setEleccionActual(preferida);
+              sessionStorage.setItem('eleccion_activa_id', preferida.id_eleccion);
+              return preferida.id_eleccion;
+            });
+          }
         }
       }
     } catch (e) {
@@ -271,12 +284,12 @@ function AppContent() {
             {rolAutenticado && (
               <div className="hidden xl:flex items-center gap-1.5">
                 {/* Election Selector / Badge for Staff */}
-                {(rolAutenticado === 'ADMIN' || rolAutenticado === 'AUDITOR') && eleccionActual && (
+                {(rolAutenticado === 'ADMIN' || rolAutenticado === 'AUDITOR') && (eleccionActual || listaElecciones.length > 0) && (
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs">
                     <span className="text-slate-400">Jornada:</span>
                     {listaElecciones.length > 1 ? (
                       <select
-                        value={eleccionId}
+                        value={eleccionId || eleccionActual?.id_eleccion || ''}
                         onChange={(e) => handleCambiarEleccion(e.target.value)}
                         className="bg-slate-950 border border-slate-700 text-white rounded-lg px-2 py-0.5 text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer max-w-[200px]"
                       >
@@ -287,18 +300,20 @@ function AppContent() {
                         ))}
                       </select>
                     ) : (
-                      <span className="font-semibold text-slate-200 max-w-[180px] truncate" title={eleccionActual.titulo}>
-                        {eleccionActual.titulo}
+                      <span className="font-semibold text-slate-200 max-w-[180px] truncate" title={eleccionActual?.titulo || listaElecciones[0]?.titulo}>
+                        {eleccionActual?.titulo || listaElecciones[0]?.titulo || 'Elección General'}
                       </span>
                     )}
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${eleccionActual.estado === 'ABIERTA'
-                        ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
-                        : 'bg-slate-800 text-slate-400 border border-slate-700'
-                        }`}
-                    >
-                      {eleccionActual.estado}
-                    </span>
+                    {(eleccionActual || listaElecciones[0]) && (
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${(eleccionActual?.estado || listaElecciones[0]?.estado) === 'ABIERTA'
+                          ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
+                          : 'bg-slate-800 text-slate-400 border border-slate-700'
+                          }`}
+                      >
+                        {eleccionActual?.estado || listaElecciones[0]?.estado}
+                      </span>
+                    )}
                   </div>
                 )}
 
@@ -447,13 +462,13 @@ function AppContent() {
             )}
 
             {/* Election info on mobile for staff */}
-            {(rolAutenticado === 'ADMIN' || rolAutenticado === 'AUDITOR') && eleccionActual && (
+            {(rolAutenticado === 'ADMIN' || rolAutenticado === 'AUDITOR') && (eleccionActual || listaElecciones.length > 0) && (
               <div className="p-3 mb-4 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
                 <div className="flex-1 min-w-0 mr-2">
                   <span className="text-[10px] text-slate-400 block uppercase font-mono">Jornada Activa</span>
                   {listaElecciones.length > 1 ? (
                     <select
-                      value={eleccionId}
+                      value={eleccionId || eleccionActual?.id_eleccion || ''}
                       onChange={(e) => handleCambiarEleccion(e.target.value)}
                       className="w-full mt-1 bg-slate-950 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none cursor-pointer"
                     >
@@ -464,17 +479,21 @@ function AppContent() {
                       ))}
                     </select>
                   ) : (
-                    <span className="text-xs font-bold text-white block truncate">{eleccionActual.titulo}</span>
+                    <span className="text-xs font-bold text-white block truncate">
+                      {eleccionActual?.titulo || listaElecciones[0]?.titulo || 'Elección General'}
+                    </span>
                   )}
                 </div>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${eleccionActual.estado === 'ABIERTA'
-                    ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
-                    : 'bg-slate-800 text-slate-400 border border-slate-700'
-                    }`}
-                >
-                  {eleccionActual.estado}
-                </span>
+                {(eleccionActual || listaElecciones[0]) && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${(eleccionActual?.estado || listaElecciones[0]?.estado) === 'ABIERTA'
+                      ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700'
+                      }`}
+                  >
+                    {eleccionActual?.estado || listaElecciones[0]?.estado}
+                  </span>
+                )}
               </div>
             )}
 
@@ -702,6 +721,8 @@ function AppContent() {
             {vistaAdmin === 'CIERRE' && (
               <PanelAdminCierre
                 eleccionId={eleccionId}
+                listaElecciones={listaElecciones}
+                onCambiarEleccion={handleCambiarEleccion}
                 onVolver={() => setVistaAdmin('ESCRUTINIO')}
                 onCierreCompletado={() => {
                   cargarEleccionActiva();

@@ -373,8 +373,16 @@ export const abrirEleccion = async (req: AuthRequest, res: Response): Promise<vo
         const ejecutadoPor = req.usuario?.nombre || req.usuario?.documento || req.usuario?.id || 'Administrador General';
         const { ip: ipOrigen, userAgent } = obtenerTelemetriaDispositivo(req);
 
-        if (!eleccionId || !adminClave) {
-            res.status(400).json({ success: false, error: 'Se requiere eleccionId y su contraseña de administrador.' });
+        if (!adminClave) {
+            res.status(400).json({ success: false, error: 'Se requiere la contraseña de administrador.' });
+            return;
+        }
+
+        let idEleccion: string;
+        try {
+            idEleccion = await resolverEleccionId(eleccionId);
+        } catch (err: any) {
+            res.status(400).json({ success: false, error: 'Se requiere un ID de elección válido para habilitar la urna.' });
             return;
         }
 
@@ -391,7 +399,7 @@ export const abrirEleccion = async (req: AuthRequest, res: Response): Promise<vo
         const internalRpcKey = process.env.DB_RPC_ADMIN_KEY || 'ADMIN_SECRET_2026';
 
         const { data, error } = await urnaDb.rpc('abrir_eleccion_oficial', {
-            p_eleccion_id: eleccionId,
+            p_eleccion_id: idEleccion,
             p_admin_clave: internalRpcKey,
             p_ejecutado_por: ejecutadoPor,
             p_ip_origen: ipOrigen,
@@ -414,10 +422,21 @@ export const cerrarEleccion = async (req: AuthRequest, res: Response): Promise<v
         const ejecutadoPor = req.usuario?.nombre || req.usuario?.documento || req.usuario?.id || 'Administrador General';
         const { ip: ipOrigen, userAgent } = obtenerTelemetriaDispositivo(req);
 
-        if (!eleccionId || !adminClave) {
+        if (!adminClave) {
             res.status(400).json({
                 success: false,
-                error: 'Se requiere el ID de la elección y su contraseña de administrador.',
+                error: 'Se requiere la contraseña de confirmación de administrador.',
+            });
+            return;
+        }
+
+        let idEleccion: string;
+        try {
+            idEleccion = await resolverEleccionId(eleccionId);
+        } catch (err: any) {
+            res.status(400).json({
+                success: false,
+                error: 'No se encontró ninguna jornada electoral para clausurar. Verifique que exista una elección registrada.',
             });
             return;
         }
@@ -435,7 +454,7 @@ export const cerrarEleccion = async (req: AuthRequest, res: Response): Promise<v
         const internalRpcKey = process.env.DB_RPC_ADMIN_KEY || 'ADMIN_SECRET_2026';
 
         const { data, error } = await urnaDb.rpc('cerrar_eleccion_oficial', {
-            p_eleccion_id: eleccionId,
+            p_eleccion_id: idEleccion,
             p_admin_clave: internalRpcKey,
             p_ejecutado_por: ejecutadoPor,
             p_ip_origen: ipOrigen,

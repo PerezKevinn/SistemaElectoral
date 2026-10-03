@@ -43,7 +43,7 @@ export const PanelAdminApertura: React.FC<PanelAdminAperturaProps> = ({ onElecci
     const handleCrearYAbrir = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!titulo || !adminClave || candidatos.some((c) => !c.nombre.trim())) {
-            setErrorMsg('Por favor completa todos los campos de candidatos y claves.');
+            setErrorMsg('Por favor completa todos los campos de candidatos y tu contraseña de administrador.');
             return;
         }
 
@@ -204,14 +204,19 @@ export const PanelAdminApertura: React.FC<PanelAdminAperturaProps> = ({ onElecci
 
                     {/* Clave Admin */}
                     <div className="pt-3 border-t border-slate-800/80">
-                        <label className="block font-semibold text-slate-300 mb-1.5">Clave de Custodia Administrativa</label>
+                        <div className="flex items-center justify-between mb-1.5">
+                            <label className="block font-semibold text-slate-300">
+                                Contraseña de Confirmación de Administrador
+                            </label>
+                            <span className="text-[10px] text-slate-500 font-mono">Clave de tu cuenta</span>
+                        </div>
                         <div className="relative">
                             <input
                                 type={mostrarClave ? 'text' : 'password'}
                                 value={adminClave}
                                 onChange={(e) => setAdminClave(e.target.value)}
-                                placeholder="ADMIN_SECRET_2026"
-                                className="w-full pl-3.5 pr-10 py-2.5 bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-200 font-mono outline-none text-xs sm:text-sm"
+                                placeholder="Ingresa tu contraseña de inicio de sesión de Admin"
+                                className="w-full pl-3.5 pr-10 py-2.5 bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-200 font-mono outline-none text-xs sm:text-sm placeholder-slate-600"
                                 required
                             />
                             <button
@@ -224,6 +229,9 @@ export const PanelAdminApertura: React.FC<PanelAdminAperturaProps> = ({ onElecci
                                 {mostrarClave ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                         </div>
+                        <span className="text-[11px] text-slate-500 mt-1.5 block">
+                            Por seguridad institucional, ingresa la misma contraseña con la que iniciaste sesión como Administrador.
+                        </span>
                     </div>
 
                     {errorMsg && (
